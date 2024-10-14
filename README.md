@@ -5,7 +5,7 @@
 </p>
 
 This framework is based on the Lattigo library. Lattigo is maintained and supported by [Tune Insight
-SA](https://tuneinsight.com).
+SA]([https://tuneinsight.com](https://github.com/tuneinsight/lattigo)).
 
 ## License
 
