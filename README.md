@@ -4,8 +4,7 @@
 	<img src="logo.png" height="400" width="400"/>
 </p>
 
-This framework is based on the Lattigo library. Lattigo is maintained and supported by [Tune Insight
-SA]([https://tuneinsight.com](https://github.com/tuneinsight/lattigo)).
+This framework is based on the [Lattigo](https://github.com/tuneinsight/lattigo) library.
 
 ## License
 
