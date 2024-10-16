@@ -1,0 +1,16 @@
+# Ignore all .txt files
+*.txt
+
+# Ignore common image files
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Ignore binnary files
+*.bin
+
+# Ignore .idea folder
+.idea*/
+
+Makefile
