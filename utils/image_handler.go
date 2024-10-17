@@ -5,46 +5,11 @@ import (
 	"github.com/anthonynsimon/bild/transform"
 	"image"
 	"image/color"
-	"image/jpeg"
 	"math"
-	"os"
 	"path/filepath"
 	"sherdal/applications"
 	"sherdal/configs"
 )
-
-// OpenJpegImage read the image file from the path and returns it
-func OpenJpegImage(path string) (image.Image, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	img, err := jpeg.Decode(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return img, nil
-}
-
-// SaveJpegImage saves the image as a file into the path
-func SaveJpegImage(filePath string, img image.Image) error {
-	outFile, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	err = jpeg.Encode(outFile, img, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // ImageData take care of accessing different types int64, float64 when
 // working with both integer based and floating point based schemes
@@ -118,31 +83,31 @@ func PreProcessImage(imageName string, maxSlot int) (numBlock int, imgBounds ima
 	path := filepath.Join(prefix, configs.DatasetDir, configs.DogsDir, imageName)
 
 	// get image and its bounds
-	img, err = OpenJpegImage(path)
+	img, err = imgio.Open(path)
 	HandleError(err)
 	imgBounds = img.Bounds()
 
 	// maximum number of pixel RGB color for vector size
-	vecSize := imgBounds.Max.X * imgBounds.Max.Y
+	imgSize := imgBounds.Max.X * imgBounds.Max.Y
 
-	i64RedVec := make([]uint64, vecSize)
-	i64GreenVec := make([]uint64, vecSize)
-	i64BlueVec := make([]uint64, vecSize)
+	i64RedVec := make([]uint64, imgSize)
+	i64GreenVec := make([]uint64, imgSize)
+	i64BlueVec := make([]uint64, imgSize)
 
-	f64RedVec := make([]float64, vecSize)
-	f64GreenVec := make([]float64, vecSize)
-	f64BlueVec := make([]float64, vecSize)
+	f64RedVec := make([]float64, imgSize)
+	f64GreenVec := make([]float64, imgSize)
+	f64BlueVec := make([]float64, imgSize)
 
 	i := 0
 	// iterate image pixel by pixel
 	for y := imgBounds.Min.Y; y < imgBounds.Max.Y; y++ {
 		for x := imgBounds.Min.X; x < imgBounds.Max.X; x++ {
 			r, g, b, _ := img.At(x, y).RGBA()
-
-			i64RedVec[i] = uint64(r)
-			i64GreenVec[i] = uint64(g)
-			i64BlueVec[i] = uint64(b)
-
+			// integer values for bgv/bfv
+			i64RedVec[i] = uint64(r >> 8)
+			i64GreenVec[i] = uint64(g >> 8)
+			i64BlueVec[i] = uint64(b >> 8)
+			// float values for ckks
 			f64RedVec[i] = float64(r)
 			f64GreenVec[i] = float64(g)
 			f64BlueVec[i] = float64(b)
@@ -151,48 +116,42 @@ func PreProcessImage(imageName string, maxSlot int) (numBlock int, imgBounds ima
 		}
 	}
 
-	l.PrintFormatted("Img Bounds: %v, len(rgb): [%d, %d, %d]", imgBounds, vecSize, vecSize, vecSize)
-	if maxSlot < vecSize {
-		l.PrintFormatted("Input = %d vs. Max slot = %d ", vecSize, maxSlot)
+	l.PrintFormatted("Img Bounds: %v, len(rgb): [%d, %d, %d]", imgBounds, imgSize, imgSize, imgSize)
+	if maxSlot < imgSize {
+		l.PrintFormatted("Input = %d vs. Max slot = %d ", imgSize, maxSlot)
 	}
 
-	numBlock = int(math.Ceil(float64(vecSize) / float64(maxSlot)))
+	numBlock = int(math.Ceil(float64(imgSize) / float64(maxSlot)))
 	l.PrintFormatted("Number of blocks: %d ", numBlock)
 
-	// Preprocess image pixels
-	i64RVecS := make([][]uint64, numBlock)
-	i64GVecS := make([][]uint64, numBlock)
-	i64BVecS := make([][]uint64, numBlock)
-	f64RVecS := make([][]float64, numBlock)
-	f64GVecS := make([][]float64, numBlock)
-	f64BVecS := make([][]float64, numBlock)
+	// Preprocess image pixels into matrix[num_block][max_slots]
+	// integer values for bgv/bfv
+	i64RMat := CreateMatrix(numBlock, maxSlot)
+	i64GMat := CreateMatrix(numBlock, maxSlot)
+	i64BMat := CreateMatrix(numBlock, maxSlot)
+	// float values for ckks
+	f64RMat := CreateMatrixFloat(numBlock, maxSlot)
+	f64GMat := CreateMatrixFloat(numBlock, maxSlot)
+	f64BMat := CreateMatrixFloat(numBlock, maxSlot)
 	for i := 0; i < numBlock; i++ {
-		i64RVecS[i] = make([]uint64, maxSlot)
-		i64GVecS[i] = make([]uint64, maxSlot)
-		i64BVecS[i] = make([]uint64, maxSlot)
-		f64RVecS[i] = make([]float64, maxSlot)
-		f64GVecS[i] = make([]float64, maxSlot)
-		f64BVecS[i] = make([]float64, maxSlot)
 		for j := 0; j < maxSlot; j++ {
-			if i*maxSlot+j >= vecSize {
-				i64RVecS[i][j] = 0
-				i64GVecS[i][j] = 0
-				i64BVecS[i][j] = 0
-				f64RVecS[i][j] = 0
-				f64GVecS[i][j] = 0
-				f64BVecS[i][j] = 0
+			index := i*maxSlot + j
+			if index >= imgSize {
+				i64RMat[i][j], i64GMat[i][j], i64BMat[i][j] = 0, 0, 0
+				f64RMat[i][j], f64GMat[i][j], f64BMat[i][j] = 0, 0, 0
 			} else {
-				i64RVecS[i][j] = i64RedVec[(i*maxSlot)+j]
-				i64GVecS[i][j] = i64GreenVec[(i*maxSlot)+j]
-				i64BVecS[i][j] = i64BlueVec[(i*maxSlot)+j]
-				f64RVecS[i][j] = f64RedVec[(i*maxSlot)+j]
-				f64GVecS[i][j] = f64GreenVec[(i*maxSlot)+j]
-				f64BVecS[i][j] = f64BlueVec[(i*maxSlot)+j]
+				i64RMat[i][j] = i64RedVec[index]
+				i64GMat[i][j] = i64GreenVec[index]
+				i64BMat[i][j] = i64BlueVec[index]
+
+				f64RMat[i][j] = f64RedVec[index]
+				f64GMat[i][j] = f64GreenVec[index]
+				f64BMat[i][j] = f64BlueVec[index]
 			}
 		}
 	}
-	imageInt64 = ImageInt64{i64RVecS, i64GVecS, i64BVecS}
-	imageFloat64 = ImageFloat64{f64RVecS, f64GVecS, f64BVecS}
+	imageInt64 = ImageInt64{i64RMat, i64GMat, i64BMat}
+	imageFloat64 = ImageFloat64{f64RMat, f64GMat, f64BMat}
 	return
 }
 
@@ -201,12 +160,12 @@ func PreProcessImage(imageName string, maxSlot int) (numBlock int, imgBounds ima
 func PostProcessBWImage[T uint64 | float64](imageName string, numBlock int, imgBounds image.Rectangle, maxSlot int, identifier string, results [][]T) {
 	var err error
 
-	vecSize := imgBounds.Max.X * imgBounds.Max.Y
+	imgSize := imgBounds.Max.X * imgBounds.Max.Y
 
-	grayVec := make([]uint8, vecSize)
+	grayVec := make([]uint8, imgSize)
 	for i := 0; i < numBlock; i++ {
 		for j := 0; j < maxSlot; j++ {
-			if i*maxSlot+j >= vecSize {
+			if i*maxSlot+j >= imgSize {
 				// we don't use the padding elements
 				break
 			}
@@ -223,7 +182,8 @@ func PostProcessBWImage[T uint64 | float64](imageName string, numBlock int, imgB
 		}
 	}
 
-	err = SaveJpegImage("./outputs/CKKS_"+identifier+"_"+imageName, grayImage)
+	name := "./outputs/CKKS_" + identifier + "_" + imageName
+	err = imgio.Save(name, grayImage, imgio.JPEGEncoder(100))
 	HandleError(err)
 }
 
@@ -231,20 +191,22 @@ func PostProcessBWImage[T uint64 | float64](imageName string, numBlock int, imgB
 // with corresponding size and save it as a file
 func PostProcessImage[T ImageData](imageName string, numBlock int, imgBounds image.Rectangle, maxSlot int, identifier string, results T) {
 	var err error
-	vecSize := imgBounds.Max.X * imgBounds.Max.Y
+	imgSize := imgBounds.Max.X * imgBounds.Max.Y
 
-	rVec := make([]uint8, vecSize)
-	gVec := make([]uint8, vecSize)
-	bVec := make([]uint8, vecSize)
+	rVec := make([]uint8, imgSize)
+	gVec := make([]uint8, imgSize)
+	bVec := make([]uint8, imgSize)
+
 	for i := 0; i < numBlock; i++ {
 		for j := 0; j < maxSlot; j++ {
-			if i*maxSlot+j >= vecSize {
+			vecIndex := i*maxSlot + j
+			if vecIndex >= imgSize {
 				// we don't use the padding elements
 				break
 			}
-			rVec[i*maxSlot+j] = uint8(results.GetR()[i][j])
-			gVec[i*maxSlot+j] = uint8(results.GetG()[i][j])
-			bVec[i*maxSlot+j] = uint8(results.GetB()[i][j])
+			rVec[vecIndex] = uint8(results.GetR()[i][j])
+			gVec[vecIndex] = uint8(results.GetG()[i][j])
+			bVec[vecIndex] = uint8(results.GetB()[i][j])
 		}
 	}
 
@@ -262,7 +224,8 @@ func PostProcessImage[T ImageData](imageName string, numBlock int, imgBounds ima
 		}
 	}
 
-	err = SaveJpegImage("./"+identifier+"_"+imageName, img)
+	name := "./" + identifier + "_" + imageName
+	err = imgio.Save(name, img, imgio.JPEGEncoder(100))
 	HandleError(err)
 }
 
@@ -285,7 +248,28 @@ func ReSizeImage(imageName string, scale int) string {
 	resizedImg := transform.Resize(img, scaledX, scaledY, transform.Linear)
 	scaledImgName := "scaled_" + imageName
 	newPath := filepath.Join(prefix, configs.DatasetDir, configs.DogsDir, scaledImgName)
-	err = SaveJpegImage(newPath, resizedImg)
+	err = imgio.Save(newPath, resizedImg, imgio.JPEGEncoder(100))
 	HandleError(err)
 	return scaledImgName
+}
+
+// Helper function to clamp values between 0-255
+func clampToUint8(value interface{}) uint8 {
+	var val float64
+
+	switch v := value.(type) {
+	case float64:
+		val = v * 255 // Scale if value is in [0, 1]
+	case uint64:
+		val = float64(v) // Assuming it's already in [0, 255]
+	default:
+		return 0 // Fallback for unsupported types
+	}
+
+	if val < 0 {
+		return 0
+	} else if val > 255 {
+		return 255
+	}
+	return uint8(val)
 }

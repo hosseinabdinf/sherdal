@@ -109,7 +109,7 @@ func SaveCipherToFile(name string, c sym.Ciphertext) {
 	fmt.Println(name, " saved to file")
 }
 
-func ConvertToInterfaceSlice[T uint64 | float64](mat [][]T) [][]interface{} {
+func ConvertToInterfaceMat[T uint64 | float64](mat [][]T) [][]interface{} {
 	result := make([][]interface{}, len(mat))
 	for i := range mat {
 		result[i] = make([]interface{}, len(mat[i]))
@@ -120,24 +120,33 @@ func ConvertToInterfaceSlice[T uint64 | float64](mat [][]T) [][]interface{} {
 	return result
 }
 
-func ConvertPToInterfaceSlice[T sym.Plaintext](mat []T) [][]interface{} {
-	result := make([][]interface{}, len(mat))
-	for i := range mat {
-		result[i] = make([]interface{}, len(mat[i]))
-		for j := range mat[i] {
-			result[i][j] = mat[i][j]
+func ConvertPtVecToInterfaceMat[T sym.Plaintext](pt []T) [][]interface{} {
+	result := make([][]interface{}, len(pt))
+	for i := range pt {
+		result[i] = make([]interface{}, len(pt[i]))
+		for j := range pt[i] {
+			result[i][j] = pt[i][j]
 		}
 	}
 	return result
 }
 
-func ConvertPtxToUi64Slice[T sym.Plaintext](pt []T) [][]uint64 {
+func ConvertPtVecToUint64Mat[T sym.Plaintext](pt []T) [][]uint64 {
 	result := make([][]uint64, len(pt))
 	for i := range pt {
 		result[i] = make([]uint64, len(pt[i]))
 		for j := range pt[i] {
 			result[i][j] = uint64(pt[i][j])
 		}
+	}
+	return result
+}
+
+func ConvertPtToUint64Mat[T sym.Plaintext](pt T) [][]uint64 {
+	result := make([][]uint64, 1)
+	result[0] = make([]uint64, len(pt))
+	for i := range pt {
+		result[0][i] = pt[i]
 	}
 	return result
 }
@@ -337,4 +346,22 @@ func ResizeSlice(oldSlice sym.Block, newLen uint64) (newSlice sym.Block) {
 		newSlice = oldSlice[:newLen]
 	}
 	return
+}
+
+// CreateMatrix Helper function to create a matrix for uint64
+func CreateMatrix(rows int, cols int) [][]uint64 {
+	mat := make([][]uint64, rows)
+	for i := range mat {
+		mat[i] = make([]uint64, cols)
+	}
+	return mat
+}
+
+// CreateMatrixFloat Helper function to create a matrix for float64
+func CreateMatrixFloat(rows int, cols int) [][]float64 {
+	mat := make([][]float64, rows)
+	for i := range mat {
+		mat[i] = make([]float64, cols)
+	}
+	return mat
 }

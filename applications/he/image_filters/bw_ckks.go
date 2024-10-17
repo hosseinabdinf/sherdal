@@ -89,7 +89,7 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 				want[i][j] = normConst * redMat[i][j]
 			}
 		}
-		logger.PrintSummarizedMatrix("Want", utils.ConvertToInterfaceSlice(want), numBlock, params.MaxSlots())
+		logger.PrintSummarizedMatrix("Want", utils.ConvertToInterfaceMat(want), numBlock, params.MaxSlots())
 
 		have := make([][]float64, numBlock)
 		for i := 0; i < numBlock; i++ {
@@ -98,7 +98,7 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 			err = ecd.Decode(dec.DecryptNew(ctt), have[i])
 			utils.HandleError(err)
 		}
-		logger.PrintSummarizedMatrix("Have", utils.ConvertToInterfaceSlice(have), numBlock, params.MaxSlots())
+		logger.PrintSummarizedMatrix("Have", utils.ConvertToInterfaceMat(have), numBlock, params.MaxSlots())
 
 		fmt.Println(ckks.GetPrecisionStats(params, ecd, nil, have[0], want[0], 0, false).String())
 	}

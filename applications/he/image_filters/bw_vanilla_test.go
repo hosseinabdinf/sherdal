@@ -2,8 +2,10 @@ package applications
 
 import (
 	"fmt"
+	"github.com/anthonynsimon/bild/imgio"
 	"image"
 	"path/filepath"
+	"sherdal/applications"
 	"sherdal/configs"
 	"sherdal/utils"
 	"testing"
@@ -19,11 +21,14 @@ func TestBWFilterVanilla(t *testing.T) {
 func testBWFilterVanilla(t *testing.T, imgName string) {
 	var err error
 	var img, gImg image.Image
-	prefix := "../../"
 
-	path := filepath.Join(prefix, configs.DatasetDir, imgName)
+	//reScaledImgName := utils.ReSizeImage(imgName, 5)
 
-	img, err = utils.OpenJpegImage(path)
+	prefix := applications.FindRootPath()
+	path := filepath.Join(prefix, configs.DatasetDir, configs.DogsDir, imgName)
+
+	// get image and its bounds
+	img, err = imgio.Open(path)
 	utils.HandleError(err)
 
 	t.Run("Vanilla Black and White Filter", func(t *testing.T) {
@@ -31,8 +36,8 @@ func testBWFilterVanilla(t *testing.T, imgName string) {
 	})
 
 	utils.HandleError(err)
-
-	err = utils.SaveJpegImage("./outputs/Vanilla_"+imgName, gImg)
+	name := "./outputs/Vanilla_" + imgName
+	err = imgio.Save(name, gImg, imgio.JPEGEncoder(100))
 	utils.HandleError(err)
 	fmt.Printf("=== Done!\n")
 }

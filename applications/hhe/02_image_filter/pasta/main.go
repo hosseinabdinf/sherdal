@@ -27,10 +27,8 @@ func main() {
 
 	// open the sample image
 	var imageName = "dog_01.jpg"
-	scaledImgName := utils.ReSizeImage(imageName, 10)
+	scaledImgName := utils.ReSizeImage(imageName, 5)
 	numBlock, imgBounds, img, _ := utils.PreProcessImage(scaledImgName, blockSize)
-
-	utils.PostProcessImage("dog.jpg", numBlock, imgBounds, blockSize, "pasta", img)
 
 	redMat := img.R
 	grnMat := img.G
@@ -63,15 +61,15 @@ func main() {
 	logger.PrintMemUsage("PastaDecryption")
 
 	decryptedImage := utils.ImageInt64{
-		R: utils.ConvertPtxToUi64Slice(redPlainMat),
-		G: utils.ConvertPtxToUi64Slice(grnPlainMat),
-		B: utils.ConvertPtxToUi64Slice(bluPlainMat),
+		R: utils.ConvertPtVecToUint64Mat(redPlainMat),
+		G: utils.ConvertPtVecToUint64Mat(grnPlainMat),
+		B: utils.ConvertPtVecToUint64Mat(bluPlainMat),
 	}
 
 	utils.PostProcessImage("dog1.jpg", numBlock, imgBounds, blockSize, "pasta", decryptedImage)
 
-	logger.PrintSummarizedMatrix("Original", utils.ConvertToInterfaceSlice(redMat), numBlock, blockSize)
-	logger.PrintSummarizedMatrix("Decrypted", utils.ConvertPToInterfaceSlice(redPlainMat), numBlock, blockSize)
+	logger.PrintSummarizedMatrix("Original", utils.ConvertToInterfaceMat(redMat), numBlock, blockSize)
+	logger.PrintSummarizedMatrix("Decrypted", utils.ConvertPtVecToInterfaceMat(redPlainMat), numBlock, blockSize)
 
 	if reflect.DeepEqual(redMat, redPlainMat) {
 		logger.PrintMessage("The plaintext after decryption is equal to the original data!")
