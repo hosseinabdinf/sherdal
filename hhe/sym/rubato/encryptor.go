@@ -22,8 +22,8 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 	logger := utils.NewLogger(utils.DEBUG)
 	var size = len(plaintext)
 	var modulus = enc.rub.params.GetModulus()
-	var ksSize = enc.rub.params.GetBlockSize() - 4
-	var numBlock = int(math.Ceil(float64(size / ksSize)))
+	var blockSize = enc.rub.params.GetBlockSize() - 4
+	var numBlock = int(math.Ceil(float64(size / blockSize)))
 	logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	// Nonce and Counter
@@ -39,11 +39,13 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 	ciphertext := make(sym.Ciphertext, size)
 	copy(ciphertext, plaintext)
 
-	for i := 0; i < numBlock; i++ {
-		z := make(sym.Block, ksSize)
-		binary.BigEndian.PutUint64(counter, uint64(i+1))
-		copy(z, enc.rub.KeyStream(nonces[i], counter))
-		ciphertext[i] = (ciphertext[i] + z[i]) % modulus
+	for b := 0; b < numBlock; b++ {
+		binary.BigEndian.PutUint64(counter, uint64(b+1))
+		keyStream := make(sym.Block, blockSize)
+		copy(keyStream, enc.rub.KeyStream(nonces[b], counter))
+		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
+			ciphertext[i] = (ciphertext[i] + keyStream[i-b*blockSize]) % modulus
+		}
 	}
 
 	return ciphertext
@@ -54,8 +56,8 @@ func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
 	logger := utils.NewLogger(utils.DEBUG)
 	var size = len(ciphertext)
 	var modulus = enc.rub.params.GetModulus()
-	var ksSize = enc.rub.params.GetBlockSize() - 4
-	var numBlock = int(math.Ceil(float64(size / ksSize)))
+	var blockSize = enc.rub.params.GetBlockSize() - 4
+	var numBlock = int(math.Ceil(float64(size / blockSize)))
 	logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	// Nonce and Counter
@@ -71,14 +73,16 @@ func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
 	plaintext := make(sym.Plaintext, size)
 	copy(plaintext, ciphertext)
 
-	for i := 0; i < numBlock; i++ {
-		z := make(sym.Block, ksSize)
-		binary.BigEndian.PutUint64(counter, uint64(i+1))
-		copy(z, enc.rub.KeyStream(nonces[i], counter))
-		if z[i] > plaintext[i] {
-			plaintext[i] += modulus
+	for b := 0; b < numBlock; b++ {
+		binary.BigEndian.PutUint64(counter, uint64(b+1))
+		keyStream := make(sym.Block, blockSize)
+		copy(keyStream, enc.rub.KeyStream(nonces[b], counter))
+		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
+			if keyStream[i-b*blockSize] > plaintext[i] {
+				plaintext[i] += modulus
+			}
+			plaintext[i] = plaintext[i] - keyStream[i-b*blockSize]
 		}
-		plaintext[i] = plaintext[i] - z[i]
 	}
 
 	return plaintext

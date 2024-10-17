@@ -38,10 +38,12 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 	ciphertext := make(sym.Ciphertext, size)
 	copy(ciphertext, plaintext)
 
-	for i := 0; i < numBlock; i++ {
-		z := make(sym.Block, blockSize)
-		copy(z, enc.her.KeyStream(nonces[i]))
-		ciphertext[i] = (ciphertext[i] + z[i]) % modulus
+	for b := 0; b < numBlock; b++ {
+		keyStream := make(sym.Block, blockSize)
+		copy(keyStream, enc.her.KeyStream(nonces[b]))
+		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
+			ciphertext[i] = (ciphertext[i] + keyStream[i-b*blockSize]) % modulus
+		}
 	}
 
 	return ciphertext
@@ -69,14 +71,15 @@ func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
 	plaintext := make(sym.Plaintext, size)
 	copy(plaintext, ciphertext)
 
-	for i := 0; i < numBlock; i++ {
-		z := make(sym.Block, blockSize)
-		copy(z, enc.her.KeyStream(nonces[i]))
-
-		if z[i] > plaintext[i] {
-			plaintext[i] += modulus
+	for b := 0; b < numBlock; b++ {
+		keyStream := make(sym.Block, blockSize)
+		copy(keyStream, enc.her.KeyStream(nonces[b]))
+		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
+			if keyStream[i-b*blockSize] > plaintext[i] {
+				plaintext[i] += modulus
+			}
+			plaintext[i] = plaintext[i] - keyStream[i-b*blockSize]
 		}
-		plaintext[i] = plaintext[i] - z[i]
 	}
 
 	return plaintext
@@ -100,8 +103,8 @@ func (enc encryptor) KeyStream(size int) (keyStream sym.Matrix) {
 
 	// generate key stream
 	keyStream = make(sym.Matrix, numBlock)
-	for i := 0; i < numBlock; i++ {
-		copy(keyStream[i], enc.her.KeyStream(nonces[i]))
+	for b := 0; b < numBlock; b++ {
+		copy(keyStream[b], enc.her.KeyStream(nonces[b]))
 	}
 
 	logger.PrintSummarizedMatrix("keystream", utils.ConvertMatToInterfaceMat(keyStream), numBlock, blockSize)
