@@ -15,8 +15,8 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 	// user side
 	// initialize the ckks scheme requirements with default parameters
 	params, ecd, enc, dec, evl := utils.InitCKKS(paramsLiteral)
-
-	numBlock, imgBounds, _, img := utils.PreProcessImage(imgName, params.MaxSlots())
+	imgBounds, _, _ := utils.GetRGBImage(imgName)
+	numBlock, _, img := utils.PreProcessImage(imgName, params.MaxSlots())
 
 	redMat := img.R
 	grnMat := img.G
@@ -89,7 +89,7 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 				want[i][j] = normConst * redMat[i][j]
 			}
 		}
-		logger.PrintSummarizedMatrix("Want", utils.ConvertToInterfaceMat(want), numBlock, params.MaxSlots())
+		logger.PrintSummarizedMatrix("Want", utils.MatrixToInterfaceMat(want), numBlock, params.MaxSlots())
 
 		have := make([][]float64, numBlock)
 		for i := 0; i < numBlock; i++ {
@@ -98,7 +98,7 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 			err = ecd.Decode(dec.DecryptNew(ctt), have[i])
 			utils.HandleError(err)
 		}
-		logger.PrintSummarizedMatrix("Have", utils.ConvertToInterfaceMat(have), numBlock, params.MaxSlots())
+		logger.PrintSummarizedMatrix("Have", utils.MatrixToInterfaceMat(have), numBlock, params.MaxSlots())
 
 		fmt.Println(ckks.GetPrecisionStats(params, ecd, nil, have[0], want[0], 0, false).String())
 	}

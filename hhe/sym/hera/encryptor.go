@@ -107,6 +107,6 @@ func (enc encryptor) KeyStream(size int) (keyStream sym.Matrix) {
 		copy(keyStream[b], enc.her.KeyStream(nonces[b]))
 	}
 
-	logger.PrintSummarizedMatrix("keystream", utils.ConvertMatToInterfaceMat(keyStream), numBlock, blockSize)
+	logger.PrintSummarizedMatrix("keystream", sym.MatrixToInterfaceMat(keyStream), numBlock, blockSize)
 	return
 }
