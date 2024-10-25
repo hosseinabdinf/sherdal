@@ -11,10 +11,9 @@ import (
 	"sherdal/configs"
 )
 
-// GetRGBImage read the image, and convert RGB vectors of data to
-// Int64 and Float64 structures with respect to the number of
-// block, where number of block = len_data_vector / max_slot
-func GetRGBImage(imageName string) (image.Rectangle, ImageUint64Vec, ImageFloat64Vec) {
+// GetRGBImage read the image, and store RGB vectors as
+// the ImageUint64Vec and ImageFloat64Vec structures for further process
+func GetRGBImage(imageName string) (ImageUint64Vec, ImageFloat64Vec) {
 	// read image bounds and RGB vectors
 	var err error
 	var img image.Image
@@ -54,21 +53,92 @@ func GetRGBImage(imageName string) (image.Rectangle, ImageUint64Vec, ImageFloat6
 		}
 	}
 
-	return imgBounds, ImageUint64Vec{R: i64Red, G: i64Green, B: i64Blue}, ImageFloat64Vec{R: f64Red, G: f64Green, B: f64Blue}
+	return ImageUint64Vec{Bounds: imgBounds, R: i64Red, G: i64Green, B: i64Blue}, ImageFloat64Vec{Bounds: imgBounds, R: f64Red, G: f64Green, B: f64Blue}
 }
 
-// PreProcessImage read the image, and convert RGB vectors of data to
-// Int64 and Float64 structures with respect to the number of
-// block, where number of block = len_data_vector / max_slot
-func PreProcessImage(imageName string, maxSlot int) (int, ImageUint64Mat, ImageFloat64Mat) {
+// Pack image R,G,B vectors into one []uint64
+func (img ImageUint64Vec) Pack() (res []uint64) {
+	res = make([]uint64, 0, 3*len(img.R))
+	res = append(res, img.R...)
+	res = append(res, img.G...)
+	res = append(res, img.B...)
+	return res
+}
+
+// UnPack data into image vector R,G,B
+func (img ImageUint64Vec) UnPack(data []uint64) {
+	l := len(data) / 3
+	img.R = data[:l]
+	img.G = data[l:(2 * l)]
+	img.B = data[(2 * l):]
+	return
+}
+
+// Pack image R,G,B vectors into one []float64
+func (img ImageFloat64Vec) Pack() (res []float64) {
+	res = make([]float64, 0, 3*len(img.R))
+	res = append(res, img.R...)
+	res = append(res, img.G...)
+	res = append(res, img.B...)
+	return res
+}
+
+// UnPack data into image vector R,G,B
+func (img ImageFloat64Vec) UnPack(data []float64) {
+	l := len(data) / 3
+	img.R = data[:l]
+	img.G = data[l:(2 * l)]
+	img.B = data[(2 * l):]
+	return
+}
+
+// PreProcessImage converts ImageFloat64Vec data to ImageFloat64Mat
+// with respect to numBlock, where numBlock = len(data_vector) / max_slot
+func (img ImageFloat64Vec) PreProcessImage(maxSlot int) (int, ImageFloat64Mat) {
 	l := NewLogger(DEBUG)
 
-	imgBounds, imgUint64Vec, imgFloat64Vec := GetRGBImage(imageName)
+	// maximum number of pixel RGB color for vector size
+	imgSize := len(img.R)
+
+	l.PrintFormatted("Img Bounds: %v, len(rgb): [%d, %d, %d]", img.Bounds, imgSize, imgSize, imgSize)
+	if maxSlot < imgSize {
+		l.PrintFormatted("Input = %d vs. Max slot = %d ", imgSize, maxSlot)
+	}
+
+	numBlock := int(math.Ceil(float64(imgSize) / float64(maxSlot)))
+	l.PrintFormatted("Number of blocks: %d ", numBlock)
+
+	// Preprocess image pixels into matrix[num_block][max_slots]
+	// float values for ckks
+	f64RMat := CreateMatrixFloat(numBlock, maxSlot)
+	f64GMat := CreateMatrixFloat(numBlock, maxSlot)
+	f64BMat := CreateMatrixFloat(numBlock, maxSlot)
+
+	for i := 0; i < numBlock; i++ {
+		for j := 0; j < maxSlot; j++ {
+			index := i*maxSlot + j
+			if index >= imgSize {
+				f64RMat[i][j], f64GMat[i][j], f64BMat[i][j] = 0, 0, 0
+			} else {
+				f64RMat[i][j] = img.R[index]
+				f64GMat[i][j] = img.G[index]
+				f64BMat[i][j] = img.B[index]
+			}
+		}
+	}
+
+	return numBlock, ImageFloat64Mat{f64RMat, f64GMat, f64BMat}
+}
+
+// PreProcessImage converts ImageUint64Vec data to ImageUint64Mat
+// with respect to numBlock, where numBlock = len(data_vector) / max_slot
+func (img ImageUint64Vec) PreProcessImage(maxSlot int) (int, ImageUint64Mat) {
+	l := NewLogger(DEBUG)
 
 	// maximum number of pixel RGB color for vector size
-	imgSize := imgBounds.Max.X * imgBounds.Max.Y
+	imgSize := len(img.R)
 
-	l.PrintFormatted("Img Bounds: %v, len(rgb): [%d, %d, %d]", imgBounds, imgSize, imgSize, imgSize)
+	l.PrintFormatted("Img Bounds: %v, len(rgb): [%d, %d, %d]", img.Bounds, imgSize, imgSize, imgSize)
 	if maxSlot < imgSize {
 		l.PrintFormatted("Input = %d vs. Max slot = %d ", imgSize, maxSlot)
 	}
@@ -81,30 +151,21 @@ func PreProcessImage(imageName string, maxSlot int) (int, ImageUint64Mat, ImageF
 	i64RMat := CreateMatrix(numBlock, maxSlot)
 	i64GMat := CreateMatrix(numBlock, maxSlot)
 	i64BMat := CreateMatrix(numBlock, maxSlot)
-	// float values for ckks
-	f64RMat := CreateMatrixFloat(numBlock, maxSlot)
-	f64GMat := CreateMatrixFloat(numBlock, maxSlot)
-	f64BMat := CreateMatrixFloat(numBlock, maxSlot)
 
 	for i := 0; i < numBlock; i++ {
 		for j := 0; j < maxSlot; j++ {
 			index := i*maxSlot + j
 			if index >= imgSize {
 				i64RMat[i][j], i64GMat[i][j], i64BMat[i][j] = 0, 0, 0
-				f64RMat[i][j], f64GMat[i][j], f64BMat[i][j] = 0, 0, 0
 			} else {
-				i64RMat[i][j] = imgUint64Vec.R[index]
-				i64GMat[i][j] = imgUint64Vec.G[index]
-				i64BMat[i][j] = imgUint64Vec.B[index]
-
-				f64RMat[i][j] = imgFloat64Vec.R[index]
-				f64GMat[i][j] = imgFloat64Vec.G[index]
-				f64BMat[i][j] = imgFloat64Vec.B[index]
+				i64RMat[i][j] = img.R[index]
+				i64GMat[i][j] = img.G[index]
+				i64BMat[i][j] = img.B[index]
 			}
 		}
 	}
 
-	return numBlock, ImageUint64Mat{i64RMat, i64GMat, i64BMat}, ImageFloat64Mat{f64RMat, f64GMat, f64BMat}
+	return numBlock, ImageUint64Mat{i64RMat, i64GMat, i64BMat}
 }
 
 // PostProcessBWImage convert the decrypted results of bw filter back into the image

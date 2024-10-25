@@ -12,7 +12,7 @@ import (
 )
 
 func TestBWFilterVanilla(t *testing.T) {
-	for _, tc := range TestVector {
+	for _, tc := range CKKSTestVector {
 		fmt.Printf("\n *** BW Filter Vanilla Test #%d, img: %s \n", tc.t, tc.imageName)
 		testBWFilterVanilla(t, tc.imageName)
 	}

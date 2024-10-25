@@ -3,32 +3,92 @@ package applications
 import (
 	"fmt"
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
+	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
 	"sherdal/utils"
 	"strconv"
 )
 
-type BwCKKS struct{}
+type BwBGV struct{}
 
-func (bw BwCKKS) Client(pubParams []byte, data []float64) (pk []byte, evk []byte, ciphers [][]byte) {
+func (bw BwBGV) Client(mParams []byte, data []uint64) (pk *rlwe.PublicKey, evk *rlwe.MemEvaluationKeySet, ciphers []*rlwe.Ciphertext) {
+	//var err error
+	//var params bgv.Parameters
+	//logger := utils.NewLogger(utils.DEBUG)
+	//
+	//err = params.UnmarshalJSON(mParams)
+	//utils.HandleError(err)
+	//
+	//preProcessImageData(data, params.MaxSlots())
+	//
+	//encoder := bgv.NewEncoder(params)
+	//
+	//keygen := rlwe.NewKeyGenerator(params)
+	//sk, pk := keygen.GenKeyPairNew()
+	//
+	//encryptor := bgv.NewEncryptor(params, pk)
+	//decryptor := bgv.NewDecryptor(params, sk)
+	//
+	//rlk := keygen.GenRelinearizationKeyNew(sk)
+	//evk = rlwe.NewMemEvaluationKeySet(rlk)
+	//var x *rlwe.Ciphertext
 
-	return pk, evk, ciphers
+	//cipher, err:= x.MarshalBinary()
+	//utils.HandleError(err)
+
+	return pk, evk, []*rlwe.Ciphertext{}
 }
 
-func (bw BwCKKS) Server() {
+func (bw BwBGV) Server(mParams []byte, pk *rlwe.PublicKey, evk *rlwe.MemEvaluationKeySet, ciphers []*rlwe.Ciphertext) {
+	//var err error
+	//var params bgv.Parameters
+	//
+	//err = params.UnmarshalJSON(mParams)
+	//utils.HandleError(err)
+	//// scale invariant = false --> bgv scheme
+	//evaluator := bgv.NewEvaluator(params, evk, false)
+	//
+	//// instruction set for adding black and white filter
+	//normConst := (1.0 / 65535.0) * 255.0
+	//temp := make([]*rlwe.Ciphertext, ciphers[0].Slots())
 
 }
 
-// BWFilterCKKS add a bw filter to input image using ckks
-func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag bool) {
-	logger := utils.NewLogger(utils.DEBUG)
+//func preProcessImageData(data []uint64, maxSlot int) (numBlock int, red []uint64, green []uint64, blue []uint64) {
+//	l := utils.NewLogger(utils.DEBUG)
+//	imgSize := int(len(data) / 3)
+//	if maxSlot < imgSize {
+//		l.PrintFormatted("Input = %d vs. Max slot = %d ", imgSize, maxSlot)
+//	}
+//	numBlock = int(math.Ceil(float64(imgSize) / float64(maxSlot)))
+//	l.PrintFormatted("Number of blocks: %d ", numBlock)
+//
+//}
+
+func BWFilterBGV(mParams []byte, data []uint64) {
 	var err error
-	// ================================================================
-	// user side
-	// initialize the ckks scheme requirements with default parameters
-	params, ecd, enc, dec, evl := utils.InitCKKS(paramsLiteral)
-	_, img := utils.GetRGBImage(imgName)
-	numBlock, imgMat := img.PreProcessImage(params.MaxSlots())
+	var params bgv.Parameters
+	logger := utils.NewLogger(utils.DEBUG)
+
+	// HOMOMORPHIC ENCRYPTION SCHEME SETUP
+	err = params.UnmarshalJSON(mParams)
+	utils.HandleError(err)
+
+	ecd := bgv.NewEncoder(params)
+	keygen := rlwe.NewKeyGenerator(params)
+	sk, pk := keygen.GenKeyPairNew()
+	enc := bgv.NewEncryptor(params, pk)
+	dec := bgv.NewDecryptor(params, sk)
+	rlk := keygen.GenRelinearizationKeyNew(sk)
+	evk = rlwe.NewMemEvaluationKeySet(rlk)
+	// scale invariant = false --> bgv scheme
+	evl := bgv.NewEvaluator(params, evk, false)
+
+	// ================================================
+
+	var imgRGB utils.ImageUint64Vec
+	imgRGB.UnPack(data)
+	numBlock, imgMat := imgRGB.PreProcessImage(params.MaxSlots())
 
 	redMat := imgMat.R
 	grnMat := imgMat.G
@@ -39,9 +99,9 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 	grnPTs := make([]*rlwe.Plaintext, numBlock)
 	bluPTs := make([]*rlwe.Plaintext, numBlock)
 	for i := 0; i < numBlock; i++ {
-		redPT := ckks.NewPlaintext(params, params.MaxLevel())
-		grnPT := ckks.NewPlaintext(params, params.MaxLevel())
-		bluPT := ckks.NewPlaintext(params, params.MaxLevel())
+		redPT := bgv.NewPlaintext(params, params.MaxLevel())
+		grnPT := bgv.NewPlaintext(params, params.MaxLevel())
+		bluPT := bgv.NewPlaintext(params, params.MaxLevel())
 
 		err = ecd.Encode(redMat[i], redPT)
 		utils.HandleError(err)
@@ -73,13 +133,12 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 
 	logN := strconv.Itoa(params.LogN())
 
-	err = utils.Serialize(redCTs[0], "./outputs/CKKS_ciphertext_"+logN+".bin")
+	err = utils.Serialize(redCTs[0], "./outputs/BGV_ciphertext_"+logN+".bin")
 	if err != nil {
 		fmt.Println(err)
 	}
-	// ================================================================
-	// Server side
-	// normalize each color homomorphically using [ct * pt (1/norm)]
+
+	// ========= Evaluation of Black and white filter
 	normConst := (1.0 / 65535.0) * 255.0
 	nRCTs := make([]*rlwe.Ciphertext, numBlock)
 	nGCTs := make([]*rlwe.Ciphertext, numBlock)
@@ -130,9 +189,6 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 		utils.HandleError(err)
 	}
 
-	// ================================================================
-	// user side
-	// Decrypt the grayscale ciphertext and save the edited image
 	grayPTs := make([]*rlwe.Plaintext, numBlock)
 	grayVCs := make([][]float64, numBlock)
 	for i := 0; i < numBlock; i++ {

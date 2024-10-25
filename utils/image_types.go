@@ -1,15 +1,19 @@
 package utils
 
+import "image"
+
 type ImageUint64Vec struct {
-	R []uint64
-	G []uint64
-	B []uint64
+	Bounds image.Rectangle
+	R      []uint64
+	G      []uint64
+	B      []uint64
 }
 
 type ImageFloat64Vec struct {
-	R []float64
-	G []float64
-	B []float64
+	Bounds image.Rectangle
+	R      []float64
+	G      []float64
+	B      []float64
 }
 
 type ImageUint64Mat struct {

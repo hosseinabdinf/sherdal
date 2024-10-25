@@ -1,5 +1,5 @@
 // This file consist of pre-defined secure parameter set for BFV/BGv and CKKS schemes
-// based on original lattigo parameter set
+// ref: original Lattigo parameter set
 
 package configs
 
@@ -183,6 +183,7 @@ var (
 
 var BGVParams = []bgv.ParametersLiteral{BGVParamsN12QP109, BGVParamsN13QP218, BGVParamsN14QP438, BGVParamsN15QP880}
 
+// BGVScaleInvariantParams = bfv
 var BGVScaleInvariantParams = []bgv.ParametersLiteral{BGVScaleInvariantParamsN12QP109, BGVScaleInvariantParamsN13QP218, BGVScaleInvariantParamsN14QP438, BGVScaleInvariantParamsN15QP880}
 
 var CKKSComplexParams = []ckks.ParametersLiteral{CKKSComplexParamsN12QP109, CKKSComplexParamsN13QP218, CKKSComplexParamsN14QP438, CKKSComplexParamsN15QP881, CKKSComplexParamsPN16QP1761}
