@@ -8,17 +8,6 @@ import (
 	"strconv"
 )
 
-type BwCKKS struct{}
-
-func (bw BwCKKS) Client(pubParams []byte, data []float64) (pk []byte, evk []byte, ciphers [][]byte) {
-
-	return pk, evk, ciphers
-}
-
-func (bw BwCKKS) Server() {
-
-}
-
 // BWFilterCKKS add a bw filter to input image using ckks
 func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag bool) {
 	logger := utils.NewLogger(utils.DEBUG)
@@ -26,7 +15,26 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 	// ================================================================
 	// user side
 	// initialize the ckks scheme requirements with default parameters
-	params, ecd, enc, dec, evl := utils.InitCKKS(paramsLiteral)
+	params, err := ckks.NewParametersFromLiteral(paramsLiteral)
+	utils.HandleError(err)
+
+	keygen := rlwe.NewKeyGenerator(params)
+
+	sk := keygen.GenSecretKeyNew()
+
+	ecd := ckks.NewEncoder(params)
+
+	enc := ckks.NewEncryptor(params, sk)
+
+	dec := ckks.NewDecryptor(params, sk)
+
+	rlk := keygen.GenRelinearizationKeyNew(sk)
+
+	evk := rlwe.NewMemEvaluationKeySet(rlk)
+
+	evl := ckks.NewEvaluator(params, evk)
+
+	// Load image data
 	_, img := utils.GetRGBImage(imgName)
 	numBlock, imgMat := img.PreProcessImage(params.MaxSlots())
 
@@ -144,5 +152,5 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 		utils.HandleError(err)
 	}
 
-	utils.PostProcessBWImage("ckksDog.jpg", numBlock, img.Bounds, params.MaxSlots(), strconv.Itoa(params.LogN()), grayVCs)
+	utils.PostProcessBWImage(imgName, numBlock, img.Bounds, params.MaxSlots(), strconv.Itoa(params.LogN()), grayVCs)
 }

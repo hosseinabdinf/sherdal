@@ -75,7 +75,7 @@ func (img *ImageUint64Vec) UnPack(data []uint64) {
 }
 
 // Pack image R,G,B vectors into one []float64
-func (img ImageFloat64Vec) Pack() (res []float64) {
+func (img *ImageFloat64Vec) Pack() (res []float64) {
 	res = make([]float64, 0, 3*len(img.R))
 	res = append(res, img.R...)
 	res = append(res, img.G...)
@@ -84,7 +84,7 @@ func (img ImageFloat64Vec) Pack() (res []float64) {
 }
 
 // UnPack data into image vector R,G,B
-func (img ImageFloat64Vec) UnPack(data []float64) {
+func (img *ImageFloat64Vec) UnPack(data []float64) {
 	l := len(data) / 3
 	img.R = data[:l]
 	img.G = data[l:(2 * l)]
@@ -94,7 +94,7 @@ func (img ImageFloat64Vec) UnPack(data []float64) {
 
 // PreProcessImage converts ImageFloat64Vec data to ImageFloat64Mat
 // with respect to numBlock, where numBlock = len(data_vector) / max_slot
-func (img ImageFloat64Vec) PreProcessImage(maxSlot int) (int, ImageFloat64Mat) {
+func (img *ImageFloat64Vec) PreProcessImage(maxSlot int) (int, ImageFloat64Mat) {
 	l := NewLogger(DEBUG)
 
 	// maximum number of pixel RGB color for vector size
@@ -132,7 +132,7 @@ func (img ImageFloat64Vec) PreProcessImage(maxSlot int) (int, ImageFloat64Mat) {
 
 // PreProcessImage converts ImageUint64Vec data to ImageUint64Mat
 // with respect to numBlock, where numBlock = len(data_vector) / max_slot
-func (img ImageUint64Vec) PreProcessImage(maxSlot int) (int, ImageUint64Mat) {
+func (img *ImageUint64Vec) PreProcessImage(maxSlot int) (int, ImageUint64Mat) {
 	l := NewLogger(DEBUG)
 
 	// maximum number of pixel RGB color for vector size
@@ -242,6 +242,7 @@ func PostProcessUintImage(identifier, imageName string, rows, cols int, imgBound
 	HandleError(err)
 }
 
+// ReSizeImage resize image to the respected scale factor
 func ReSizeImage(imageName string, scale int) string {
 	var err error
 	var img image.Image
@@ -266,7 +267,7 @@ func ReSizeImage(imageName string, scale int) string {
 	return scaledImgName
 }
 
-// Helper function to clamp values between 0-255
+// clampToUint8 clamp values between 0-255
 func clampToUint8(value interface{}) uint8 {
 	var val float64
 

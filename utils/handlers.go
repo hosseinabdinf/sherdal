@@ -4,8 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"fmt"
-	"github.com/tuneinsight/lattigo/v6/core/rlwe"
-	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"math"
 	"os"
@@ -13,7 +11,7 @@ import (
 	"strings"
 )
 
-// HandleError checks the error and throws a fatal log if the error isn't nil
+// HandleError checks the error and throws a panic if the error isn't nil
 func HandleError(err error) {
 	if err != nil {
 		fmt.Printf("|-> Error: %s\n", err.Error())
@@ -21,40 +19,8 @@ func HandleError(err error) {
 	}
 }
 
-// InitCKKS returns an instance of ckks parameters along with the encoder,
-// encryptor, and decryptor initiated by the parameters
-func InitCKKS(paramsLiteral ckks.ParametersLiteral) (ckks.Parameters, *ckks.Encoder, *rlwe.Encryptor, *rlwe.Decryptor, *ckks.Evaluator) {
-	var err error
-
-	params, err := ckks.NewParametersFromLiteral(paramsLiteral)
-	HandleError(err)
-
-	keygen := rlwe.NewKeyGenerator(params)
-
-	sk := keygen.GenSecretKeyNew()
-
-	ecd := ckks.NewEncoder(params)
-
-	enc := ckks.NewEncryptor(params, sk)
-
-	dec := ckks.NewDecryptor(params, sk)
-
-	rlk := keygen.GenRelinearizationKeyNew(sk)
-
-	evk := rlwe.NewMemEvaluationKeySet(rlk)
-
-	eval := ckks.NewEvaluator(params, evk)
-
-	return params, ecd, enc, dec, eval
-}
-
-// Size measure a ciphertext size and return the size value in bytes
-func Size(cipher rlwe.Ciphertext) (size int) {
-	return size
-}
-
-// SavePlainToFile save the given Plaintext as hexadecimal values to a file
-func SavePlainToFile(name string, p sym.Plaintext) {
+// SavePlaintextFile save the given Plaintext as hexadecimal values
+func SavePlaintextFile(name string, p sym.Plaintext) {
 	// Open a file for writing
 	file, err := os.Create(name + ".txt")
 	if err != nil {
@@ -81,8 +47,8 @@ func SavePlainToFile(name string, p sym.Plaintext) {
 	fmt.Println(name, " saved to file")
 }
 
-// SaveCipherToFile save the given Ciphertext as hexadecimal values to a file
-func SaveCipherToFile(name string, c sym.Ciphertext) {
+// SaveCiphertextFile save the given Ciphertext as hexadecimal values
+func SaveCiphertextFile(name string, c sym.Ciphertext) {
 	// Open a file for writing
 	file, err := os.Create(name + ".txt")
 	if err != nil {
@@ -109,62 +75,6 @@ func SaveCipherToFile(name string, c sym.Ciphertext) {
 	fmt.Println(name, " saved to file")
 }
 
-// SaveToFile save the given Plaintext as hexadecimal values to a file
-//func (p sym.Plaintext) SaveToFile(name string) {
-//	// Open a file for writing
-//	file, err := os.Create(name + ".txt")
-//	if err != nil {
-//		panic(err)
-//	}
-//	defer func(file *os.File) {
-//		err := file.Close()
-//		if err != nil {
-//			panic(err)
-//		}
-//	}(file)
-//
-//	// Create a new CSV writer
-//	writer := csv.NewWriter(file)
-//	defer writer.Flush()
-//
-//	// Write each element of the slice as a separate row in the CSV file
-//	for _, val := range p {
-//		err := writer.Write([]string{fmt.Sprintf("0x0%x", val)})
-//		if err != nil {
-//			panic(err)
-//		}
-//	}
-//	fmt.Println(name, " saved to file")
-//}
-
-// SaveToFile save the given Ciphertext as hexadecimal values to a file
-//func (c Ciphertext) SaveToFile(name string) {
-//	// Open a file for writing
-//	file, err := os.Create(name + ".txt")
-//	if err != nil {
-//		panic(err)
-//	}
-//	defer func(file *os.File) {
-//		err := file.Close()
-//		if err != nil {
-//			panic(err)
-//		}
-//	}(file)
-//
-//	// Create a new CSV writer
-//	writer := csv.NewWriter(file)
-//	defer writer.Flush()
-//
-//	// Write each element of the slice as a separate row in the CSV file
-//	for _, val := range c {
-//		err := writer.Write([]string{fmt.Sprintf("0x0%x", val)})
-//		if err != nil {
-//			panic(err)
-//		}
-//	}
-//	fmt.Println(name, " saved to file")
-//}
-
 // Uint64ToHex converts a vector of uint64 elements to hexadecimal values
 // and print them
 func Uint64ToHex(data []uint64) {
@@ -187,8 +97,8 @@ func ScaleDown(x uint64, scaleFactor float64) float64 {
 	return float64(x) / scaleFactor
 }
 
-// TestVectorGen to generate random values for test vectors
-func TestVectorGen(n int, modulus uint64) {
+// GenTestVector generates random values for test vectors
+func GenTestVector(n int, modulus uint64) {
 	nonces := make([][]byte, n)
 	for i := 0; i < n; i++ {
 		nonces[i] = make([]byte, 8)
@@ -199,7 +109,7 @@ func TestVectorGen(n int, modulus uint64) {
 	}
 	fmt.Print("{")
 	for i := 0; i < n; i++ {
-		result := bytesToHexWithModulus(nonces[i], modulus)
+		result := ByteToHexMod(nonces[i], modulus)
 		fmt.Printf("%s, ", result)
 		if (i+1)%4 == 0 {
 			fmt.Printf("\n")
@@ -208,7 +118,7 @@ func TestVectorGen(n int, modulus uint64) {
 	fmt.Print("}\n")
 }
 
-func bytesToHexWithModulus(data []byte, modulus uint64) string {
+func ByteToHexMod(data []byte, modulus uint64) string {
 	// Convert bytes to uint64 and take modulus
 	result := make([]uint64, len(data)/8)
 	for i := 0; i < len(data)/8; i++ {
@@ -245,20 +155,6 @@ func RandomFloatDataGen(col int, row int) (data [][]float64) {
 	}
 	return
 }
-
-// Scale data to save as []uint64
-//delta := float64(tc.params.GetModulus()) / float64(N)
-//for s := 0; s < optSize; s++ {
-//	plaintext := func() []uint64 {
-//		result := make([]uint64, len(data[s]))
-//		for i, v := range data[s] {
-//			result[i] = sym.ScaleUp(v, delta)
-//		}
-//		return result
-//	}()
-//	fmt.Println("Len: ", len(plaintext), " - OG: ", data[0])
-//	sym.Uint64ToHex(plaintext)
-//fmt.Println(">  Encrypt() the data[", s, "]")
 
 // RotateSlice to rotate a slice by a given offset
 func RotateSlice(slice sym.Block, offset uint64) {

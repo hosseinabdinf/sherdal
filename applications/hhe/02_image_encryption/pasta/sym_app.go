@@ -1,6 +1,3 @@
-// This is a sample application for adding black and white filter to an image using
-// hybrid homomorphic encryption scheme: PASTA
-
 package pasta
 
 import (
@@ -10,7 +7,8 @@ import (
 	"sherdal/utils"
 )
 
-func Run(params pasta.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
+// ImgEncApp Image Encryption Application using Pasta symmetric cipher
+func ImgEncApp(params pasta.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	logger := utils.NewLogger(utils.DEBUG)
 
 	// generate symmetric key
@@ -38,8 +36,8 @@ func Run(params pasta.Parameter, imgBounds image.Rectangle, img utils.ImageUint6
 	}
 	logger.PrintMemUsage("PastaDecryption")
 
+	// re-construct and save the decrypted Image
 	decryptedImage := utils.NewImg64Mat(decryptedVec, rows, cols)
-
 	utils.PostProcessUintImage("pasta", "dog.jpg", rows, cols, imgBounds, decryptedImage)
 
 	logger.PrintSummarizedMatrix("Original", utils.VecToInterfaceMat(img.R), rows, cols)

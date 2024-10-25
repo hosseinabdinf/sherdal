@@ -28,8 +28,17 @@ type ImageFloat64Mat struct {
 	B [][]float64
 }
 
-func NewImg64Vec() ImageUint64Vec {
+func NewImgUint64Vec() ImageUint64Vec {
 	return ImageUint64Vec{
+		Bounds: image.Rectangle{},
+		R:      nil,
+		G:      nil,
+		B:      nil,
+	}
+}
+
+func NewImgFloat64Vec() ImageFloat64Vec {
+	return ImageFloat64Vec{
 		Bounds: image.Rectangle{},
 		R:      nil,
 		G:      nil,

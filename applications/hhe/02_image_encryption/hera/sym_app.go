@@ -1,19 +1,21 @@
-package rubato
+package hera
 
 import (
 	"image"
-	"sherdal/hhe/sym/rubato"
+	"reflect"
+	"sherdal/hhe/sym/hera"
 	"sherdal/utils"
 )
 
-func Run(params rubato.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
+// ImgEncApp Image Encryption Application using Hera symmetric cipher
+func ImgEncApp(params hera.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	logger := utils.NewLogger(utils.DEBUG)
 
 	// generate symmetric key
-	symKey := rubato.GenerateSymKey(params)
+	symKey := hera.GenerateSymKey(params)
 
 	// initialize the symmetric cipher
-	symRubato := rubato.NewRubato(symKey, params)
+	symRubato := hera.NewHera(symKey, params)
 	symEnc := symRubato.NewEncryptor()
 
 	// This will be equal to number of blocks and maxSlot in the HE case
@@ -24,7 +26,7 @@ func Run(params rubato.Parameter, imgBounds image.Rectangle, img utils.ImageUint
 	redCipher := symEnc.Encrypt(img.R)
 	grnCipher := symEnc.Encrypt(img.G)
 	bluCipher := symEnc.Encrypt(img.B)
-	logger.PrintMemUsage("RubatoEncryption")
+	logger.PrintMemUsage("HeraEncryption")
 
 	// decrypt image data using symmetric cipher
 	decryptedVec := utils.ImageUint64Vec{
@@ -32,15 +34,18 @@ func Run(params rubato.Parameter, imgBounds image.Rectangle, img utils.ImageUint
 		G: symEnc.Decrypt(grnCipher),
 		B: symEnc.Decrypt(bluCipher),
 	}
-	logger.PrintMemUsage("RubatoDecryption")
+	logger.PrintMemUsage("HeraDecryption")
 
+	// re-construct and save the decrypted Image
 	decryptedImage := utils.NewImg64Mat(decryptedVec, rows, cols)
-
-	utils.PostProcessUintImage("rubato", "dog.jpg", rows, cols, imgBounds, decryptedImage)
+	utils.PostProcessUintImage("hera", "dog.jpg", rows, cols, imgBounds, decryptedImage)
 
 	logger.PrintSummarizedMatrix("Original", utils.VecToInterfaceMat(img.R), rows, cols)
 	logger.PrintSummarizedMatrix("Decrypted", utils.VecToInterfaceMat(decryptedVec.R), rows, cols)
 
-	precision, lost := symEnc.GetPrecisionAndLoss(img.R, decryptedVec.R)
-	logger.PrintFormatted("Precision= %f, Lost= %f", precision, lost)
+	if reflect.DeepEqual(img.R, decryptedVec.R) {
+		logger.PrintMessage("Pass: Plaintext data and decrypted are equal!")
+	} else {
+		logger.PrintMessage("Fail: Plaintext data and decrypted are not equal!")
+	}
 }
