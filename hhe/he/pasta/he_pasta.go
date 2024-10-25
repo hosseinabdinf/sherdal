@@ -11,7 +11,7 @@ import (
 
 type HEPasta struct {
 	logger  utils.Logger
-	fvPasta MFVPasta
+	fvPasta BGVPasta
 
 	params    Parameter
 	symParams pasta.Parameter
@@ -87,8 +87,8 @@ func (pas *HEPasta) HEKeyGen() {
 	fmt.Printf("=== Parameters : N=%d, T=%d, LogQP = %f, sigma = %T %v, logMaxSlot= %d \n", 1<<params.LogN(), params.PlaintextModulus(), params.LogQP(), params.Xe(), params.Xe(), params.LogMaxSlots())
 }
 
-func (pas *HEPasta) InitFvPasta() MFVPasta {
-	pas.fvPasta = NEWMFVPasta(pas.params, pas.bfvParams, pas.symParams, pas.encoder, pas.encryptor, pas.evaluator)
+func (pas *HEPasta) InitFvPasta() BGVPasta {
+	pas.fvPasta = NEWBFVPasta(pas.params, pas.bfvParams, pas.symParams, pas.encoder, pas.encryptor, pas.evaluator)
 	return pas.fvPasta
 }
 
@@ -97,7 +97,8 @@ func (pas *HEPasta) CreateGaloisKeys(dataSize int) {
 	galEls := pas.fvPasta.GetGaloisElements(dataSize)
 	pas.glk = pas.keyGenerator.GenGaloisKeysNew(galEls, pas.sk)
 	pas.evk = rlwe.NewMemEvaluationKeySet(pas.rlk, pas.glk...)
-	pas.evaluator = bgv.NewEvaluator(pas.bfvParams, pas.evk)
+	// BGV scheme --> scale invariant = false
+	pas.evaluator = bgv.NewEvaluator(pas.bfvParams, pas.evk, false)
 	pas.fvPasta.UpdateEvaluator(pas.evaluator)
 }
 
