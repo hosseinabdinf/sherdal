@@ -13,7 +13,7 @@ func TestPasta3(t *testing.T) {
 	for _, tc := range pasta3TestVector {
 		// generate symmetric key
 		var key sym.Key
-		t.Run("HeraSymKeyGen", func(t *testing.T) {
+		t.Run("PastaSymKeyGen", func(t *testing.T) {
 			key = GenerateSymKey(tc.Params)
 		})
 

@@ -33,7 +33,7 @@ func benchmarkPasta(tc *TestContext, b *testing.B) {
 	var ciphertext sym.Ciphertext
 
 	// generate symmetric key
-	b.Run("HeraSymKeyGen", func(b *testing.B) {
+	b.Run("PastaSymKeyGen", func(b *testing.B) {
 		key = GenerateSymKey(tc.Params)
 	})
 

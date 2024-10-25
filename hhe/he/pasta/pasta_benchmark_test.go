@@ -1,8 +1,11 @@
 package pasta
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
+	"sherdal/hhe/sym"
+	"sherdal/hhe/sym/pasta"
 	"sherdal/utils"
 	"testing"
 )
@@ -37,9 +40,27 @@ func benchHEPasta(tc TestContext, b *testing.B) {
 		b.Skip("skipping benchmark in short mode.")
 	}
 
-	logger := utils.NewLogger(utils.DEBUG)
-	logger.PrintDataLen(tc.Key)
+	// Symmetric Pasta
+	var symKey sym.Key
+	symKey = pasta.GenerateSymKey(tc.SymParams)
 
+	symPasta := pasta.NewPasta(symKey, tc.SymParams)
+	encryptor := symPasta.NewEncryptor()
+	numBlocks := 1
+	maxSlot := tc.SymParams.GetBlockSize() * numBlocks
+
+	var plaintext sym.Plaintext
+	var ciphertext sym.Ciphertext
+
+	// generate random plaintext
+	plaintext = make(sym.Plaintext, maxSlot)
+	for i := 0; i < maxSlot; i++ {
+		plaintext[i] = utils.SampleZq(rand.Reader, tc.SymParams.GetModulus())
+	}
+	// encrypt plaintext
+	ciphertext = encryptor.Encrypt(plaintext)
+
+	// HE Pasta
 	hePasta := NewHEPasta()
 
 	hePasta.InitParams(tc.Params, tc.SymParams)
@@ -56,7 +77,7 @@ func benchHEPasta(tc TestContext, b *testing.B) {
 	b.Run("PASTA/GaloisKeysGen", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			hePasta.CreateGaloisKeys(len(tc.ExCiphertext))
+			hePasta.CreateGaloisKeys(len(ciphertext))
 		}
 	})
 
@@ -64,7 +85,7 @@ func benchHEPasta(tc TestContext, b *testing.B) {
 	b.Run("PASTA/EncryptSymKey", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			hePasta.EncryptSymKey(tc.Key)
+			hePasta.EncryptSymKey(symKey)
 		}
 	})
 
@@ -76,7 +97,7 @@ func benchHEPasta(tc TestContext, b *testing.B) {
 	b.Run("PASTA/Transcipher", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			fvCiphers = hePasta.Transcipher(nonce, tc.ExCiphertext)
+			fvCiphers = hePasta.Transcipher(nonce, ciphertext)
 		}
 	})
 

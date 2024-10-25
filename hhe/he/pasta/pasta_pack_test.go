@@ -2,6 +2,7 @@ package pasta
 
 import (
 	"encoding/binary"
+	"sherdal/hhe/sym"
 	"sherdal/hhe/sym/pasta"
 	"testing"
 )
@@ -25,6 +26,11 @@ func testHEPastaPack(t *testing.T, tc TestContext) {
 	lg := hePastaPack.logger
 	//lg.PrintDataLen(tc.Key)
 
+	// Symmetric Pasta
+	var symKey sym.Key
+	symKey = pasta.GenerateSymKey(tc.SymParams)
+
+	// HE Pasta
 	hePastaPack.InitParams(tc.Params, tc.SymParams)
 
 	hePastaPack.HEKeyGen()
@@ -38,7 +44,7 @@ func testHEPastaPack(t *testing.T, tc TestContext) {
 	lg.PrintMemUsage("RandomDataGen")
 
 	// generate key stream
-	symPasta := pasta.NewPasta(tc.Key, tc.SymParams)
+	symPasta := pasta.NewPasta(symKey, tc.SymParams)
 	symCiphertexts := symPasta.NewEncryptor().Encrypt(plaintext)
 	lg.PrintMemUsage("EncryptSymData")
 
@@ -47,7 +53,7 @@ func testHEPastaPack(t *testing.T, tc TestContext) {
 	lg.PrintMemUsage("CreateGaloisKeys")
 
 	// encrypts symmetric master key using BFV on the client side
-	hePastaPack.EncryptSymKey(tc.Key)
+	hePastaPack.EncryptSymKey(symKey)
 	lg.PrintMemUsage("EncryptSymKey")
 
 	nonce := make([]byte, 8)
@@ -64,7 +70,7 @@ func testHEPastaPack(t *testing.T, tc TestContext) {
 	lg.PrintMemUsage("Decrypt")
 
 	lg.PrintFormatted("[Rounds=%d | Modulus=%d | KeySize=%d | BlockSize=%d]", tc.SymParams.Rounds, tc.SymParams.Modulus, tc.SymParams.KeySize, tc.SymParams.BlockSize)
-	lg.PrintSummarizedVector("symKey", tc.Key, len(tc.Key))
+	lg.PrintSummarizedVector("symKey", symKey, len(symKey))
 	//logger.PrintSummarizedVector("ciphertext", ciphertext, len(ciphertext))
 	lg.PrintSummarizedVector("plaintext", plaintext, len(plaintext))
 	lg.PrintSummarizedVector("decrypted", decrypted, len(decrypted))

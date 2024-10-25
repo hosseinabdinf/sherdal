@@ -5,7 +5,6 @@ import (
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"sherdal/hhe/sym"
 	"sherdal/hhe/sym/pasta"
-	"sherdal/utils"
 	"testing"
 )
 
@@ -39,9 +38,14 @@ func benchHEPastaPack(tc TestContext, b *testing.B) {
 		b.Skip("skipping benchmark in short mode.")
 	}
 
-	logger := utils.NewLogger(utils.DEBUG)
-	logger.PrintDataLen(tc.Key)
+	// Symmetric Pasta
+	var symKey sym.Key
+	symKey = pasta.GenerateSymKey(tc.SymParams)
 
+	symPasta := pasta.NewPasta(symKey, tc.SymParams)
+	var symCipherTexts sym.Ciphertext
+
+	// HE Pasta
 	hePastaPack := NewHEPastaPack()
 
 	hePastaPack.InitParams(tc.Params, tc.SymParams)
@@ -58,8 +62,6 @@ func benchHEPastaPack(tc TestContext, b *testing.B) {
 	// generates Random data for full coefficients
 	data := hePastaPack.RandomDataGen()
 
-	symPasta := pasta.NewPasta(tc.Key, tc.SymParams)
-	var symCipherTexts sym.Ciphertext
 	b.Run("PASTA/EncryptSymData", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -79,7 +81,7 @@ func benchHEPastaPack(tc TestContext, b *testing.B) {
 	b.Run("PASTA/EncryptSymKey", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			hePastaPack.EncryptSymKey(tc.Key)
+			hePastaPack.EncryptSymKey(symKey)
 		}
 	})
 

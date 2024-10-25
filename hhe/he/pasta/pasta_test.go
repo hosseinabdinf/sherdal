@@ -1,9 +1,13 @@
 package pasta
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"reflect"
+	"sherdal/hhe/sym"
+	"sherdal/hhe/sym/pasta"
+	"sherdal/utils"
 	"testing"
 )
 
@@ -25,8 +29,29 @@ func testHEPasta(t *testing.T, tc TestContext) {
 	hePasta := NewHEPasta()
 	lg := hePasta.logger
 
-	//lg.PrintDataLen(tc.Key)
+	// Symmetric Pasta
+	var symKey sym.Key
+	symKey = pasta.GenerateSymKey(tc.SymParams)
+	lg.PrintMemUsage("SymKeyGen")
 
+	symPasta := pasta.NewPasta(symKey, tc.SymParams)
+	encryptor := symPasta.NewEncryptor()
+	numBlocks := 1
+	maxSlot := tc.SymParams.GetBlockSize() * numBlocks
+
+	var plaintext sym.Plaintext
+	var ciphertext sym.Ciphertext
+
+	// generate random plaintext
+	plaintext = make(sym.Plaintext, maxSlot)
+	for i := 0; i < maxSlot; i++ {
+		plaintext[i] = utils.SampleZq(rand.Reader, tc.SymParams.GetModulus())
+	}
+
+	ciphertext = encryptor.Encrypt(plaintext)
+	lg.PrintMemUsage("PastaEncryptionTest")
+
+	// HE Pasta
 	hePasta.InitParams(tc.Params, tc.SymParams)
 
 	hePasta.HEKeyGen()
@@ -35,30 +60,30 @@ func testHEPasta(t *testing.T, tc TestContext) {
 	_ = hePasta.InitFvPasta()
 	lg.PrintMemUsage("InitFvPasta")
 
-	hePasta.CreateGaloisKeys(len(tc.ExCiphertext))
+	hePasta.CreateGaloisKeys(len(ciphertext))
 	lg.PrintMemUsage("CreateGaloisKeys")
 
 	//encrypts symmetric master key using BFV on the client side
-	hePasta.EncryptSymKey(tc.Key)
+	hePasta.EncryptSymKey(symKey)
 	lg.PrintMemUsage("EncryptSymKey")
 
 	nonce := make([]byte, 8)
 	binary.BigEndian.PutUint64(nonce, uint64(123456789))
 
 	// the server side
-	fvCiphers := hePasta.Transcipher(nonce, tc.ExCiphertext)
+	fvCiphers := hePasta.Transcipher(nonce, ciphertext)
 	lg.PrintMemUsage("Transcipher")
 
 	decrypted := hePasta.Decrypt(fvCiphers[0])
 	lg.PrintMemUsage("Decrypt")
 
 	lg.PrintFormatted("[Rounds=%d | Modulus=%d | KeySize=%d | BlockSize=%d]", tc.SymParams.Rounds, tc.SymParams.Modulus, tc.SymParams.KeySize, tc.SymParams.BlockSize)
-	lg.PrintSummarizedVector("symKey", tc.Key, len(tc.Key))
+	lg.PrintSummarizedVector("symKey", symKey, len(symKey))
 	//logger.PrintSummarizedVector("ciphertext", ciphertext, len(ciphertext))
-	lg.PrintSummarizedVector("plaintext", tc.Plaintext, len(tc.Plaintext))
+	lg.PrintSummarizedVector("plaintext", plaintext, len(plaintext))
 	lg.PrintSummarizedVector("decrypted", decrypted, len(decrypted))
 
-	if reflect.DeepEqual(tc.Plaintext, decrypted) {
+	if reflect.DeepEqual(plaintext, decrypted) {
 		fmt.Println("PASSED")
 	} else {
 		fmt.Println("FAILED")
