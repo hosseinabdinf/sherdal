@@ -144,5 +144,5 @@ func BWFilterCKKS(imgName string, paramsLiteral ckks.ParametersLiteral, testFlag
 		utils.HandleError(err)
 	}
 
-	utils.PostProcessBWImage(imgName, numBlock, img.Bounds, params.MaxSlots(), strconv.Itoa(params.LogN()), grayVCs)
+	utils.PostProcessBWImage("ckksDog.jpg", numBlock, img.Bounds, params.MaxSlots(), strconv.Itoa(params.LogN()), grayVCs)
 }

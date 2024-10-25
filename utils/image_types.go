@@ -28,6 +28,15 @@ type ImageFloat64Mat struct {
 	B [][]float64
 }
 
+func NewImg64Vec() ImageUint64Vec {
+	return ImageUint64Vec{
+		Bounds: image.Rectangle{},
+		R:      nil,
+		G:      nil,
+		B:      nil,
+	}
+}
+
 func NewImg64Mat(data ImageUint64Vec, rows, cols int) ImageUint64Mat {
 	if len(data.R) != rows*cols {
 		panic("data length does not match specified dimensions")

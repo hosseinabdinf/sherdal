@@ -57,7 +57,7 @@ func GetRGBImage(imageName string) (ImageUint64Vec, ImageFloat64Vec) {
 }
 
 // Pack image R,G,B vectors into one []uint64
-func (img ImageUint64Vec) Pack() (res []uint64) {
+func (img *ImageUint64Vec) Pack() (res []uint64) {
 	res = make([]uint64, 0, 3*len(img.R))
 	res = append(res, img.R...)
 	res = append(res, img.G...)
@@ -66,7 +66,7 @@ func (img ImageUint64Vec) Pack() (res []uint64) {
 }
 
 // UnPack data into image vector R,G,B
-func (img ImageUint64Vec) UnPack(data []uint64) {
+func (img *ImageUint64Vec) UnPack(data []uint64) {
 	l := len(data) / 3
 	img.R = data[:l]
 	img.G = data[l:(2 * l)]
