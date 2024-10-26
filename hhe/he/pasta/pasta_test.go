@@ -3,7 +3,6 @@ package pasta
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"reflect"
 	"sherdal/hhe/sym"
 	"sherdal/hhe/sym/pasta"
@@ -84,8 +83,8 @@ func testHEPasta(t *testing.T, tc TestContext) {
 	lg.PrintSummarizedVector("decrypted", decrypted, len(decrypted))
 
 	if reflect.DeepEqual(plaintext, decrypted) {
-		fmt.Println("PASSED")
+		lg.PrintMessage("PASSED")
 	} else {
-		fmt.Println("FAILED")
+		t.Fail()
 	}
 }

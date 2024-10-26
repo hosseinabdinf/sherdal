@@ -197,8 +197,8 @@ func (pas *pasta) matmul(state *sym.Block) {
 	ps := pas.params.GetBlockSize()
 	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
 	newState := make(sym.Block, ps)
-	rand := pas.getRandomVector(false)
-	var currentRow = rand
+	randVC := pas.getRandomVector(false)
+	var currentRow = randVC
 
 	for i := 0; i < ps; i++ {
 		for j := 0; j < ps; j++ {
@@ -208,7 +208,7 @@ func (pas *pasta) matmul(state *sym.Block) {
 			newState[i] = (newState[i] + matMulVal.Uint64()) % pas.params.Modulus
 		}
 		if i != (ps - 1) {
-			currentRow = pas.calculateRow(currentRow, rand)
+			currentRow = pas.calculateRow(currentRow, randVC)
 		}
 	}
 

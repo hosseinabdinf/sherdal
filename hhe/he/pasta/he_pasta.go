@@ -66,10 +66,11 @@ func (pas *HEPasta) InitParams(params Parameter, symParams pasta.Parameter) {
 	// create bfvParams from Literal
 	fvParams, err := bgv.NewParametersFromLiteral(bgv.ParametersLiteral{
 		LogN:             params.logN,
-		LogQ:             []int{60, 59, 59, 57, 57, 55, 55, 53, 53, 51, 51, 47, 47},
-		LogP:             []int{57, 57, 55, 55, 53, 53, 51, 51, 47, 47},
+		LogQ:             []int{47, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34},
+		LogP:             []int{47, 47, 47, 47},
 		PlaintextModulus: params.plainMod,
 	})
+	//fvParams, err := bgv.NewParametersFromLiteral(configs.BGVParamsN15QP880)
 	utils.HandleError(err)
 	pas.bfvParams = fvParams
 }
@@ -88,7 +89,7 @@ func (pas *HEPasta) HEKeyGen() {
 }
 
 func (pas *HEPasta) InitFvPasta() BGVPasta {
-	pas.fvPasta = NEWBFVPasta(pas.params, pas.bfvParams, pas.symParams, pas.encoder, pas.encryptor, pas.evaluator)
+	pas.fvPasta = NEWBFVPasta(pas.params, pas.bfvParams, pas.symParams, pas.encoder, pas.encryptor, pas.decryptor, pas.evaluator)
 	return pas.fvPasta
 }
 
@@ -97,7 +98,7 @@ func (pas *HEPasta) CreateGaloisKeys(dataSize int) {
 	galEls := pas.fvPasta.GetGaloisElements(dataSize)
 	pas.glk = pas.keyGenerator.GenGaloisKeysNew(galEls, pas.sk)
 	pas.evk = rlwe.NewMemEvaluationKeySet(pas.rlk, pas.glk...)
-	// BGV scheme --> scale invariant = false
+	// BGV scheme --> scale invariant = false | BFV scheme --> scale invariant = true
 	pas.evaluator = bgv.NewEvaluator(pas.bfvParams, pas.evk, false)
 	pas.fvPasta.UpdateEvaluator(pas.evaluator)
 }

@@ -24,7 +24,6 @@ func TestPasta4Pack(t *testing.T) {
 func testHEPastaPack(t *testing.T, tc TestContext) {
 	hePastaPack := NewHEPastaPack()
 	lg := hePastaPack.logger
-	//lg.PrintDataLen(tc.Key)
 
 	// Symmetric Pasta
 	var symKey sym.Key
@@ -59,8 +58,8 @@ func testHEPastaPack(t *testing.T, tc TestContext) {
 	nonce := make([]byte, 8)
 	binary.BigEndian.PutUint64(nonce, 123456789)
 
-	// the server side tranciphering
-	fvCiphers := hePastaPack.Trancipher(nonce, symCiphertexts)
+	// the server side transciphering
+	fvCiphers := hePastaPack.Transcipher(nonce, symCiphertexts)
 	lg.PrintMemUsage("Transcipher")
 
 	ctRes := hePastaPack.Flatten(fvCiphers, len(symCiphertexts))

@@ -48,12 +48,12 @@ type bgvPasta struct {
 	encoder   *bgv.Encoder
 	evaluator *bgv.Evaluator
 	encryptor *rlwe.Encryptor
-
-	rcPt *rlwe.Plaintext
-	rc   []uint64
+	decryptor *rlwe.Decryptor
+	rcPt      *rlwe.Plaintext
+	rc        []uint64
 }
 
-func NEWBFVPasta(params Parameter, Params bgv.Parameters, symParams pasta.Parameter, encoder *bgv.Encoder, encryptor *rlwe.Encryptor, evaluator *bgv.Evaluator) BGVPasta {
+func NEWBFVPasta(params Parameter, Params bgv.Parameters, symParams pasta.Parameter, encoder *bgv.Encoder, encryptor *rlwe.Encryptor, decryptor *rlwe.Decryptor, evaluator *bgv.Evaluator) BGVPasta {
 	mBGVPasta := new(bgvPasta)
 	mBGVPasta.logger = utils.NewLogger(utils.DEBUG)
 
@@ -75,6 +75,7 @@ func NEWBFVPasta(params Parameter, Params bgv.Parameters, symParams pasta.Parame
 
 	mBGVPasta.encoder = encoder
 	mBGVPasta.encryptor = encryptor
+	mBGVPasta.decryptor = decryptor
 	mBGVPasta.evaluator = evaluator
 
 	mps := uint64(0) // max prime size
@@ -107,11 +108,12 @@ func NEWBFVPasta(params Parameter, Params bgv.Parameters, symParams pasta.Parame
 func (pas *bgvPasta) Crypt(nonce []byte, kCt *rlwe.Ciphertext, dCt sym.Ciphertext) (res []*rlwe.Ciphertext) {
 	size := len(dCt)
 	numBlock := uint64(math.Ceil(float64(size / int(pas.plainSize))))
-
+	//pas.logger.PrintMessages("Number of blocks: ", numBlock)
 	res = make([]*rlwe.Ciphertext, numBlock)
 
 	// state = homomorphically encrypted key
 	pas.state = kCt.CopyNew()
+	pas.printNoise("Fresh State")
 
 	counter := make([]byte, 8)
 	for b := uint64(0); b < numBlock; b++ {
@@ -131,10 +133,13 @@ func (pas *bgvPasta) Crypt(nonce []byte, kCt *rlwe.Ciphertext, dCt sym.Ciphertex
 
 			if r == pas.Rounds {
 				pas.sBoxCube()
+
 			} else {
 				pas.sBoxFeistel()
 			}
+
 			//	print noise for state in each round
+			pas.printNoise("Round")
 		}
 		//	final addition
 		pas.mat1 = pas.genRandomMatrix()
@@ -147,6 +152,7 @@ func (pas *bgvPasta) Crypt(nonce []byte, kCt *rlwe.Ciphertext, dCt sym.Ciphertex
 
 		// Q: do we need to remove the second vector?
 		// A: there's no need for that
+		// pas.removeMask()
 
 		// converting
 		var sIndex = b * pas.plainSize
@@ -155,16 +161,17 @@ func (pas *bgvPasta) Crypt(nonce []byte, kCt *rlwe.Ciphertext, dCt sym.Ciphertex
 		plaintext := bgv.NewPlaintext(pas.bgvParams, pas.bgvParams.MaxLevel())
 		_ = pas.encoder.Encode(symCt, plaintext)
 		// negate state --> state = state * -1
-		pas.state, _ = pas.evaluator.MulNew(pas.state, -1)
+		//pas.state, _ = pas.evaluator.MulNew(pas.state, -1)
 		// res = symCt + (-state)
-		res[b], _ = pas.evaluator.AddNew(pas.state, plaintext)
+		//res[b], _ = pas.evaluator.AddNew(pas.state, plaintext)
+		res[b] = pas.state
 	}
 	return
 }
 
-func (pas *bgvPasta) EncKey(key []uint64) (res *rlwe.Ciphertext) {
-
-	dupKey := make([]uint64, pas.halfSlots+pas.plainSize)
+func (pas *bgvPasta) EncKey(key []uint64) (ctKey *rlwe.Ciphertext) {
+	//dupKey := make([]uint64, pas.halfSlots+pas.plainSize)
+	dupKey := make([]uint64, pas.bgvParams.MaxSlots())
 
 	for i := uint64(0); i < pas.plainSize; i++ {
 		dupKey[i] = key[i]
@@ -175,7 +182,7 @@ func (pas *bgvPasta) EncKey(key []uint64) (res *rlwe.Ciphertext) {
 	err := pas.encoder.Encode(dupKey, pKey)
 	utils.HandleError(err)
 
-	res, err = pas.encryptor.EncryptNew(pKey)
+	ctKey, err = pas.encryptor.EncryptNew(pKey)
 	utils.HandleError(err)
 
 	return
@@ -270,15 +277,17 @@ func (pas *bgvPasta) addRC() {
 
 func (pas *bgvPasta) sBoxCube() {
 	tmp := pas.state.CopyNew()
+	// state = state * state
 	err := pas.evaluator.MulRelin(pas.state, pas.state, pas.state)
 	utils.HandleError(err)
+	// state = state ^ 3
 	err = pas.evaluator.MulRelin(pas.state, tmp, pas.state)
 	utils.HandleError(err)
 }
 
 func (pas *bgvPasta) sBoxFeistel() {
-	// rotate -1 to the left
-	stateRotate, err := pas.evaluator.RotateColumnsNew(pas.state, -1)
+	// rotate rows to the right
+	rotated, err := pas.evaluator.RotateColumnsNew(pas.state, -1)
 	utils.HandleError(err)
 
 	// generate masks
@@ -295,13 +304,26 @@ func (pas *bgvPasta) sBoxFeistel() {
 	err = pas.encoder.Encode(masks, maskPlaintext)
 	utils.HandleError(err)
 	// stateRot = stateRot * mask
-	err = pas.evaluator.Mul(stateRotate, maskPlaintext, stateRotate)
+	err = pas.evaluator.Mul(rotated, maskPlaintext, rotated)
 	utils.HandleError(err)
 	// stateRot = stateRot ^ 2
-	err = pas.evaluator.MulRelin(stateRotate, stateRotate, stateRotate)
+	err = pas.evaluator.MulRelin(rotated, rotated, rotated)
 	utils.HandleError(err)
 	// state = state + stateRot^2
-	err = pas.evaluator.Add(pas.state, stateRotate, pas.state)
+	err = pas.evaluator.Add(pas.state, rotated, pas.state)
+	utils.HandleError(err)
+}
+
+func (pas *bgvPasta) removeMask() {
+	// generate masks
+	masks := make([]uint64, pas.plainSize)
+	for i := range masks {
+		masks[i] = 1
+	}
+	maskPlaintext := bgv.NewPlaintext(pas.bgvParams, pas.bgvParams.MaxLevel())
+	err := pas.encoder.Encode(masks, maskPlaintext)
+	utils.HandleError(err)
+	err = pas.evaluator.Mul(pas.state, maskPlaintext, pas.state)
 	utils.HandleError(err)
 }
 
@@ -343,8 +365,8 @@ func (pas *bgvPasta) babyStepGiantStep() {
 		if k > 0 {
 			ltgo.RotateSlice(diag, int(k*pas.bsGsN1))
 			ltgo.RotateSlice(tmp, int(k*pas.bsGsN1))
-			//HHESoK.RotateSlice(diag, k*pas.bsGsN1)
-			//HHESoK.RotateSlice(tmp, k*pas.bsGsN1)
+			//utils.RotateSlice(diag, k*pas.bsGsN1)
+			//utils.RotateSlice(tmp, k*pas.bsGsN1)
 		}
 
 		//	non-full pack rotation
@@ -550,4 +572,9 @@ func (pas *bgvPasta) calculateRow(previousRow, firstRow []uint64) []uint64 {
 		output[j] = temp.Uint64()
 	}
 	return output
+}
+
+func (pas *bgvPasta) printNoise(label string) {
+	std, eMin, eMax := rlwe.Norm(pas.state, pas.decryptor)
+	pas.logger.PrintFormatted("%s Noise: STD=%f, min=%f, max=%f\n", label, std, eMin, eMax)
 }

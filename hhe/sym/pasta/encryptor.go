@@ -35,6 +35,7 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 	for b := uint64(0); b < numBlock; b++ {
 		binary.BigEndian.PutUint64(counter, b)
 		keyStream := enc.pas.KeyStream(nonce, counter)
+		logger.PrintSummarizedVector("keystream", keyStream, len(keyStream))
 		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
 			ciphertext[i] = (ciphertext[i] + keyStream[i-b*blockSize]) % modulus
 		}

@@ -1,10 +1,10 @@
 package pasta
 
 import (
+	"crypto/rand"
 	"fmt"
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
-	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"sherdal/hhe/sym"
 	"sherdal/hhe/sym/pasta"
 	"sherdal/utils"
@@ -89,7 +89,7 @@ func (pas *HEPastaPack) HEKeyGen() {
 }
 
 func (pas *HEPastaPack) InitFvPasta() MFVPastaPack {
-	pas.fvPasta = NEWMFVPastaPack(pas.params, pas.bfvParams, pas.symParams, pas.encoder, pas.encryptor, pas.evaluator)
+	pas.fvPasta = NEWMFVPastaPack(pas.params, pas.bfvParams, pas.symParams, pas.encoder, pas.encryptor, pas.decryptor, pas.evaluator)
 	return pas.fvPasta
 }
 
@@ -105,11 +105,12 @@ func (pas *HEPastaPack) CreateGaloisKeys(dataSize int) {
 // RandomDataGen generates the matrix of random data
 // = [output size * number of block]
 func (pas *HEPastaPack) RandomDataGen() (data []uint64) {
-	size := 1 * pas.N // make it equal as HERA and Rubato
+	// make it equal as HERA and Rubato
+	size := 1 * pas.N
 	p := pas.symParams.GetModulus()
 	data = make([]uint64, size)
 	for i := 0; i < size; i++ {
-		data[i] = sampling.RandUint64() % p
+		data[i] = utils.SampleZq(rand.Reader, p)
 	}
 	return
 }
@@ -119,7 +120,7 @@ func (pas *HEPastaPack) EncryptSymKey(key sym.Key) {
 	pas.logger.PrintMessages(">> Symmetric Key #slots: ", pas.symKeyCt.Slots())
 }
 
-func (pas *HEPastaPack) Trancipher(nonces []byte, dCt []uint64) []*rlwe.Ciphertext {
+func (pas *HEPastaPack) Transcipher(nonces []byte, dCt []uint64) []*rlwe.Ciphertext {
 	tranCipData := pas.fvPasta.Crypt(nonces, pas.symKeyCt, dCt)
 	return tranCipData
 }

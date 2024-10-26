@@ -50,6 +50,7 @@ type mfvPastaPack struct {
 	encoder   *bgv.Encoder
 	evaluator *bgv.Evaluator
 	encryptor *rlwe.Encryptor
+	decryptor *rlwe.Decryptor
 
 	rcPt *rlwe.Plaintext
 	rc   []uint64
@@ -58,7 +59,7 @@ type mfvPastaPack struct {
 	mask []uint64
 }
 
-func NEWMFVPastaPack(params Parameter, fvParams bgv.Parameters, symParams pasta.Parameter, encoder *bgv.Encoder, encryptor *rlwe.Encryptor, evaluator *bgv.Evaluator) MFVPastaPack {
+func NEWMFVPastaPack(params Parameter, fvParams bgv.Parameters, symParams pasta.Parameter, encoder *bgv.Encoder, encryptor *rlwe.Encryptor, decryptor *rlwe.Decryptor, evaluator *bgv.Evaluator) MFVPastaPack {
 	fvPastaPack := new(mfvPastaPack)
 	fvPastaPack.logger = utils.NewLogger(utils.DEBUG)
 
@@ -80,6 +81,7 @@ func NEWMFVPastaPack(params Parameter, fvParams bgv.Parameters, symParams pasta.
 
 	fvPastaPack.encoder = encoder
 	fvPastaPack.encryptor = encryptor
+	fvPastaPack.decryptor = decryptor
 	fvPastaPack.evaluator = evaluator
 
 	mps := uint64(0) // max prime size
@@ -99,7 +101,7 @@ func NEWMFVPastaPack(params Parameter, fvParams bgv.Parameters, symParams pasta.
 	return fvPastaPack
 }
 
-// Crypt tranciphers SYM.Enc(dCt) into HE.Enc(res)
+// Crypt transciphers SYM.Enc(dCt) into HE.Enc(res)
 // Parameters:
 //
 //	nonce
@@ -141,6 +143,8 @@ func (pas *mfvPastaPack) Crypt(nonce []byte, kCt *rlwe.Ciphertext, dCt []uint64)
 				pas.sBoxFeistel()
 			}
 			//	print noise for state in each round
+			std, eMin, eMax := rlwe.Norm(pas.state, pas.decryptor)
+			pas.logger.PrintFormatted("Noise: STD=%f, min=%f, max=%f\n", std, eMin, eMax)
 		}
 		//	final addition
 		pas.mat1 = pas.genRandomMatrix()

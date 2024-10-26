@@ -93,7 +93,7 @@ func benchHEPastaPack(tc TestContext, b *testing.B) {
 	b.Run("PASTA/Transcipher", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			fvCiphers = hePastaPack.Trancipher(nonce, symCipherTexts)
+			fvCiphers = hePastaPack.Transcipher(nonce, symCipherTexts)
 		}
 	})
 
