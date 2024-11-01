@@ -58,17 +58,17 @@ func NewHEPasta() *HEPasta {
 	return hePasta
 }
 
-func (pas *HEPasta) InitParams(params Parameter, symParams pasta.Parameter) {
-	pas.params = params
+func (pas *HEPasta) InitParams(homParams Parameter, symParams pasta.Parameter) {
+	pas.params = homParams
 	pas.symParams = symParams
 	pas.outSize = symParams.BlockSize
-	pas.N = 1 << params.logN
+	pas.N = 1 << homParams.logN
 	// create bfvParams from Literal
 	fvParams, err := bgv.NewParametersFromLiteral(bgv.ParametersLiteral{
-		LogN:             params.logN,
+		LogN:             homParams.logN,
 		LogQ:             []int{47, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34, 34},
 		LogP:             []int{47, 47, 47, 47},
-		PlaintextModulus: params.plainMod,
+		PlaintextModulus: homParams.plainMod,
 	})
 	//fvParams, err := bgv.NewParametersFromLiteral(configs.BGVParamsN15QP880)
 	utils.HandleError(err)

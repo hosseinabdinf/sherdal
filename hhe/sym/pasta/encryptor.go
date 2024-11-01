@@ -23,6 +23,14 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 	var modulus = enc.pas.params.GetModulus()
 	var blockSize = uint64(enc.pas.params.GetBlockSize())
 	var numBlock = uint64(math.Ceil(float64(size / blockSize)))
+	if size <= blockSize {
+		diff := int(blockSize - size)
+		numBlock = uint64(1)
+		for i := 0; i < diff; i++ {
+			plaintext = append(plaintext, 0)
+		}
+		size = uint64(len(plaintext))
+	}
 	logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	nonce := make([]byte, 8)
@@ -51,6 +59,9 @@ func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
 	var modulus = enc.pas.params.GetModulus()
 	var blockSize = uint64(enc.pas.params.GetBlockSize())
 	var numBlock = uint64(math.Ceil(float64(size / blockSize)))
+	if size < blockSize {
+		panic("The length of ciphertext does not match the block size!")
+	}
 	logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	plaintext := make(sym.Plaintext, size)
