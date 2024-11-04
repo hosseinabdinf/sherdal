@@ -257,7 +257,7 @@ func (rubato *mfvRubato) modSwitch(nbSwitch int) {
 	}
 }
 
-// Compute ciphertexts without modulus switching
+// CryptNoModSwitch Compute ciphertexts without modulus switching
 func (rubato *mfvRubato) CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []*ckks_fv.Ciphertext) []*ckks_fv.Ciphertext {
 	for i := 0; i < rubato.blocksize; i++ {
 		rubato.mkCt[i] = kCt[i].CopyNew().Ciphertext()
@@ -266,18 +266,18 @@ func (rubato *mfvRubato) CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []
 
 	rubato.addRoundKey(0, false)
 	for r := 1; r < rubato.numRound; r++ {
-		rubato.linLayer()
+		rubato.linearLayer()
 		rubato.feistel()
 		rubato.addRoundKey(r, false)
 	}
-	rubato.linLayer()
+	rubato.linearLayer()
 	rubato.feistel()
 	rubato.finLinLayer()
 	rubato.finAddRoundKey(rubato.blocksize - 4)
 	return rubato.stCt
 }
 
-// Compute ciphertexts with automatic modulus switching
+// CryptAutoModSwitch Compute ciphertexts with automatic modulus switching
 func (rubato *mfvRubato) CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt []*ckks_fv.Ciphertext, noiseEstimator ckks_fv.MFVNoiseEstimator) ([]*ckks_fv.Ciphertext, []int) {
 	rubatoModDown := make([]int, rubato.numRound+1)
 	rubatoModDown[0] = rubato.nbInitModDown
@@ -288,12 +288,12 @@ func (rubato *mfvRubato) CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt 
 
 	rubato.addRoundKey(0, false)
 	for r := 1; r < rubato.numRound; r++ {
-		rubato.linLayer()
+		rubato.linearLayer()
 		rubato.feistel()
 		rubato.modSwitchAuto(r, noiseEstimator, rubatoModDown)
 		rubato.addRoundKey(r, false)
 	}
-	rubato.linLayer()
+	rubato.linearLayer()
 	rubato.feistel()
 	rubato.modSwitchAuto(rubato.numRound, noiseEstimator, rubatoModDown)
 	rubato.finLinLayer()
@@ -316,12 +316,12 @@ func (rubato *mfvRubato) Crypt(nonce [][]byte, counter []byte, kCt []*ckks_fv.Ci
 
 	rubato.addRoundKey(0, false)
 	for r := 1; r < rubato.numRound; r++ {
-		rubato.linLayer()
+		rubato.linearLayer()
 		rubato.feistel()
 		rubato.modSwitch(rubatoModDown[r])
 		rubato.addRoundKey(r, false)
 	}
-	rubato.linLayer()
+	rubato.linearLayer()
 	rubato.feistel()
 	rubato.modSwitch(rubatoModDown[rubato.numRound])
 	rubato.finLinLayer()
@@ -350,24 +350,24 @@ func (rubato *mfvRubato) addRoundKey(round int, reduce bool) {
 	}
 }
 
-func (rubato *mfvRubato) finAddRoundKey(outputsize int) {
+func (rubato *mfvRubato) finAddRoundKey(outputSize int) {
 	ev := rubato.evaluator
 
-	for i := 0; i < outputsize; i++ {
+	for i := 0; i < outputSize; i++ {
 		rubato.rcPt[i] = ckks_fv.NewPlaintextMulLvl(rubato.params, rubato.stCt[i].Level())
 		rubato.encoder.EncodeUintMulSmall(rubato.rc[rubato.numRound][i], rubato.rcPt[i])
 	}
 
-	for i := 0; i < outputsize; i++ {
+	for i := 0; i < outputSize; i++ {
 		rubato.rkCt[i] = ev.MulNew(rubato.mkCt[i], rubato.rcPt[i])
 	}
 
-	for i := 0; i < outputsize; i++ {
+	for i := 0; i < outputSize; i++ {
 		ev.Add(rubato.stCt[i], rubato.rkCt[i], rubato.stCt[i])
 	}
 }
 
-func (rubato *mfvRubato) linLayer() {
+func (rubato *mfvRubato) linearLayer() {
 	ev := rubato.evaluator
 	buf := make([]*ckks_fv.Ciphertext, rubato.blocksize)
 
@@ -517,7 +517,7 @@ func (rubato *mfvRubato) linLayer() {
 			}
 		}
 	} else {
-		panic("Invalid blocksize")
+		panic("Invalid block size!")
 	}
 }
 
