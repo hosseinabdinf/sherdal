@@ -89,7 +89,7 @@ func (rub *rubato) KeyStream(nonce []byte, counter []byte) (ks sym.Block) {
 	rub.linearLayer()
 
 	// adding this noise will change the key randomly !!
-	// cause lost very small part of plaintext
+	// This will cause a very small lost of plaintext from LSB
 	if rub.params.GetSigma() > 0 {
 		rub.addGaussianNoise()
 	}
@@ -147,7 +147,7 @@ func (rub *rubato) generateRCs() {
 	for r := 0; r <= rounds; r++ {
 		rcs[r] = make([]uint64, blockSize)
 		for i := 0; i < blockSize; i++ {
-			rcs[r][i] = mUtils.SampleZq(rub.shake, p) * key[i] % p
+			rcs[r][i] = mUtils.RubSampleZqx(rub.shake, p) * key[i] % p
 		}
 	}
 	rub.rcs = rcs
