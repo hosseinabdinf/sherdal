@@ -1,15 +1,19 @@
-package ckks_fv
+package test
 
 import (
 	"crypto/rand"
 	"fmt"
 	"math"
+
+	. "sherdal/hhe/he/ckks_fv"
+	"sherdal/hhe/he/ckks_fv/ring"
 	hera2 "sherdal/hhe/he/hera"
 	rubato2 "sherdal/hhe/he/rubato"
+	"sherdal/utils"
 	"testing"
 
-	"HHESoK/rtf_ckks_integration/ring"
-	"HHESoK/rtf_ckks_integration/utils"
+	sampling "github.com/tuneinsight/lattigo/v6/utils/sampling"
+
 	"golang.org/x/crypto/sha3"
 )
 
@@ -622,7 +626,7 @@ func plainRubato(blocksize int, numRound int, nonce []byte, counter []byte, key 
 	xof.Write(counter)
 	state = make([]uint64, blocksize)
 
-	prng, err := utils.NewPRNG()
+	prng, err := sampling.NewPRNG()
 	if err != nil {
 		panic(err)
 	}

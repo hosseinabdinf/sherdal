@@ -1,8 +1,9 @@
 package ckks_fv
 
 import (
-	"github.com/tuneinsight/lattigo/v6/utils"
 	"math"
+
+	"github.com/tuneinsight/lattigo/v6/utils"
 	//"fmt"
 )
 

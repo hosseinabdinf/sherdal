@@ -1,5 +1,7 @@
 package hera
 
+import "sherdal/hhe/sym"
+
 type TestCase int
 
 const (
@@ -20,6 +22,7 @@ type TestContext struct {
 	FVParamIndex int
 	Radix        int
 	Params       Parameter
+	Key          sym.Key
 }
 
 // TestVector Test Vectors

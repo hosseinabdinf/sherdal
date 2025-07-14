@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"fmt"
-	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"math"
 	"os"
 	"sherdal/hhe/sym"
 	"strings"
+
+	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )
 
 // HandleError checks the error and throws a panic if the error isn't nil

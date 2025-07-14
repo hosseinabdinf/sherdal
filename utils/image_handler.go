@@ -1,14 +1,15 @@
 package utils
 
 import (
-	"github.com/anthonynsimon/bild/imgio"
-	"github.com/anthonynsimon/bild/transform"
 	"image"
 	"image/color"
 	"math"
 	"path/filepath"
 	"sherdal/applications"
 	"sherdal/configs"
+
+	"github.com/anthonynsimon/bild/imgio"
+	"github.com/anthonynsimon/bild/transform"
 )
 
 // GetRGBImage read the image, and store RGB vectors as
