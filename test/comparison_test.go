@@ -19,16 +19,12 @@ var printPrecisionStats = flag.Bool("print-precision", false, "print precision s
 func TestComparison(t *testing.T) {
 
 	// Number of drivers in the area
-	N := 2 //max is N
-
+	N := 8 //max is N
+	//Modulus := uint64(65929217)
+	//modulus := uint64(65929216)
 	// Parameters (128 bit security) with plaintext modulus 65929217
 	// Creating encryption parameters from a default params with logN=14, logQP=438 with a plaintext modulus T=65929217
-	params, err := bgv.NewParametersFromLiteral(bgv.ParametersLiteral{
-		LogN:             20,
-		LogQ:             []int{56, 55, 55, 54, 54, 54},
-		LogP:             []int{55, 55},
-		PlaintextModulus: 0x3ee0001,
-	})
+	params, err := bgv.NewParametersFromLiteral(bgv.ExampleParameters128BitLogN14LogQP438)
 	if err != nil {
 		panic(err)
 	}
@@ -41,9 +37,9 @@ func TestComparison(t *testing.T) {
 	decryptor := rlwe.NewDecryptor(params, Sk)
 	//encryptorPk := rlwe.NewEncryptor(params, riderPk)
 	encryptorSk := rlwe.NewEncryptor(params, Sk)
-
+	galoisKeys := kgen.GenGaloisKeysNew([]uint64{5}, Sk)
 	relinKey := kgen.GenRelinearizationKeyNew(Sk)
-	evKeySet := rlwe.NewMemEvaluationKeySet(relinKey)
+	evKeySet := rlwe.NewMemEvaluationKeySet(relinKey, galoisKeys...)
 	evaluator := bgv.NewEvaluator(params, evKeySet)
 
 	prng, _ := sampling.NewPRNG()
@@ -53,17 +49,22 @@ func TestComparison(t *testing.T) {
 
 	//randValue := ring.RandUniform(prng, maxvalue, mask)
 	//randValue2 := ring.RandUniform(prng, maxvalue, mask)
-	plainData := make([]uint64, N)
-	plainData2 := make([]uint64, N)
-	mainData := make([]uint64, N)
-	for i := 0; i < N; i++ {
-		plainData[i] = ring.RandUniform(prng, 2, mask)
-		plainData2[i] = ring.RandUniform(prng, 2, mask)
-		mainData[i] = ring.RandUniform(prng, maxvalue, mask)
+	ones := []uint64{1, 1, 1, 1, 1, 1, 1, 1}
+	plainData1 := []uint64{0, 0, 1, 0, 0, 1, 0, 0}
+	plainData2 := []uint64{0, 0, 1, 0, 0, 1, 0, 1}
+	mainData := []uint64{ring.RandUniform(prng, maxvalue, mask)}
+	/*for i := 0; i < N; i++ {
+		plainData[i] = 1
+		plainData2[i] = 1
+	}*/
+
+	onesPlain := bgv.NewPlaintext(params, params.MaxLevel())
+	if err := encoder.Encode(ones, onesPlain); err != nil {
+		panic(err)
 	}
 
 	Plaintext := bgv.NewPlaintext(params, params.MaxLevel())
-	if err := encoder.Encode(plainData, Plaintext); err != nil {
+	if err := encoder.Encode(plainData1, Plaintext); err != nil {
 		panic(err)
 	}
 
@@ -79,29 +80,75 @@ func TestComparison(t *testing.T) {
 
 	cipher, _ := encryptorSk.EncryptNew(Plaintext)
 	cipher2, _ := encryptorSk.EncryptNew(Plaintext2)
+	cipherOnes, _ := encryptorSk.EncryptNew(onesPlain)
+
 	mainDataCipher, _ := encryptorSk.EncryptNew(MainPlainText)
-	cipherQuery, err := evaluator.MulNew(cipher, cipher2)
+	cipherQuery, err := evaluator.SubNew(cipher, cipher2)
+	if err != nil {
+		panic(err)
+	}
+	// Get rid of pesky "-1"
+	evaluator.MulRelin(cipherQuery, cipherQuery, cipherQuery)
+
+	err = evaluator.Sub(cipherOnes, cipherQuery, cipherQuery)
+
+	rotator := bgv.NewCiphertext(params, cipherQuery.Degree(), cipherQuery.Level())
+	evaluator.Add(rotator, cipherQuery, rotator)
+	newQuery := bgv.NewCiphertext(params, rotator.Degree(), rotator.Level())
+	evaluator.Add(newQuery, cipherQuery, newQuery)
+
+	rotatorPlain := make([]uint64, N)
+	encoder.Decode(decryptor.DecryptNew(rotator), rotatorPlain)
+	log.Print("rotator start: ", rotatorPlain)
+
+	newQueryPlain := make([]uint64, N)
+	encoder.Decode(decryptor.DecryptNew(newQuery), newQueryPlain)
+	log.Print("new query start: ", newQueryPlain)
+	for i := 0; i < N-1; i++ {
+		if err := evaluator.RotateColumns(rotator, 1, rotator); err != nil {
+			panic(err)
+		} else {
+			rotatorPlain := make([]uint64, N)
+			encoder.Decode(decryptor.DecryptNew(rotator), rotatorPlain)
+			log.Print("rotator: ", rotatorPlain)
+
+			evaluator.MatchScalesAndLevel(newQuery, rotator)
+
+			err = evaluator.MulRelin(newQuery, rotator, newQuery)
+			if err != nil {
+				panic(err)
+			}
+			err = evaluator.Rescale(newQuery, newQuery)
+			if err != nil {
+				panic(err)
+			}
+			err = evaluator.Rescale(rotator, rotator)
+			if err != nil {
+				panic(err)
+			}
+
+			newQueryPlain := make([]uint64, N)
+			encoder.Decode(decryptor.DecryptNew(newQuery), newQueryPlain)
+			log.Print("newQuery: ", newQueryPlain)
+		}
+	}
+
+	if err != nil {
+		panic(err)
+	}
+	retrievedData, err := evaluator.MulRelinNew(newQuery, mainDataCipher)
 	if err != nil {
 		panic(err)
 	}
 
-	err = evaluator.Relinearize(cipherQuery, cipherQuery)
-
-	if err != nil {
-		panic(err)
-	}
-
-	retrievedData, err := evaluator.MulNew(cipherQuery, mainDataCipher)
-	if err != nil {
-		panic(err)
-	}
-
+	newQueryPlain = make([]uint64, N)
+	encoder.Decode(decryptor.DecryptNew(newQuery), newQueryPlain)
 	cipherQueryResult := make([]uint64, N)
 	encoder.Decode(decryptor.DecryptNew(cipherQuery), cipherQueryResult)
 	result := make([]uint64, N)
 	encoder.Decode(decryptor.DecryptNew(retrievedData), result)
 
-	for i := range plainData {
-		log.Print("PlainData1: ", plainData[i], " PlainData2: ", plainData2[i], " cipherQueryResult: ", cipherQueryResult[i], " MainPlainData: ", mainData[i], " Result: ", result[i])
+	for i := range mainData {
+		log.Print("PlainData1: ", plainData1, " PlainData2: ", plainData2, " p1 ==: ", newQueryPlain[i], " MainPlainData: ", mainData[i], " Result: ", result[i])
 	}
 }
