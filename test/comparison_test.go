@@ -81,7 +81,13 @@ func TestComparison(t *testing.T) {
 	cipher2, _ := encryptorSk.EncryptNew(Plaintext2)
 	mainDataCipher, _ := encryptorSk.EncryptNew(MainPlainText)
 	cipherCombined, _ := evaluator.AddNew(cipher, -1)
-	cipherQuery, err := evaluator.AddNew(cipherCombined, cipher2)
+	cipherQuery, err := evaluator.MulNew(cipherCombined, cipher2)
+	if err != nil {
+		panic(err)
+	}
+
+	err = evaluator.Relinearize(cipherQuery, cipherQuery)
+
 	if err != nil {
 		panic(err)
 	}
