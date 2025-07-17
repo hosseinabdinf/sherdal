@@ -57,8 +57,8 @@ func TestComparison(t *testing.T) {
 	plainData2 := make([]uint64, N)
 	mainData := make([]uint64, N)
 	for i := 0; i < N; i++ {
-		plainData[i] = 1
-		plainData2[i] = 1
+		plainData[i] = ring.RandUniform(prng, 2, mask)
+		plainData2[i] = ring.RandUniform(prng, 2, mask)
 		mainData[i] = ring.RandUniform(prng, maxvalue, mask)
 	}
 
@@ -80,8 +80,7 @@ func TestComparison(t *testing.T) {
 	cipher, _ := encryptorSk.EncryptNew(Plaintext)
 	cipher2, _ := encryptorSk.EncryptNew(Plaintext2)
 	mainDataCipher, _ := encryptorSk.EncryptNew(MainPlainText)
-	cipherCombined, _ := evaluator.AddNew(cipher, -1)
-	cipherQuery, err := evaluator.MulNew(cipherCombined, cipher2)
+	cipherQuery, err := evaluator.MulNew(cipher, cipher2)
 	if err != nil {
 		panic(err)
 	}
