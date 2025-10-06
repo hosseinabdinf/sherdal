@@ -1,9 +1,10 @@
 package linear_regression
 
 import (
-	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 	"sherdal/utils"
 	"testing"
+
+	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 )
 
 func TestLRBgv(t *testing.T) {
@@ -11,7 +12,7 @@ func TestLRBgv(t *testing.T) {
 	//	testLRBgv(t, tc)
 	//}
 
-	testLRBgv(t, BGVTestVector[0])
+	testLRBgv(t, BGVTestVector[1])
 }
 
 func testLRBgv(t *testing.T, tc BgvTestContext) {
