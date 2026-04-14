@@ -3,47 +3,45 @@ package aes
 import (
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
 )
 
 type Encryptor interface {
 	Encrypt(plaintext []byte) (ciphertext []byte, err error)
-	Decrypt(ciphertext []byte) (plaintext []byte)
+	Decrypt(ciphertext []byte) (plaintext []byte, err error)
 }
 
 type encryptor struct {
-	aes aesCtr
+	aes *aesCtr
 }
 
 func (enc *encryptor) Encrypt(plaintext []byte) (ciphertext []byte, err error) {
-	// Generate a random nonce
-	nonce := make([]byte, enc.aes.params.GetBlockSize())
+	nonceSize := enc.aes.params.GetBlockSize()
+	nonce := make([]byte, nonceSize)
 	_, err = rand.Read(nonce)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a new CTR stream with the generated nonce
 	stream := cipher.NewCTR(enc.aes.cipher, nonce)
-
-	// Encrypt the plaintext
 	ciphertext = make([]byte, len(plaintext))
 	stream.XORKeyStream(ciphertext, plaintext)
 
-	// Prepend the nonce to the ciphertext
 	ciphertext = append(nonce, ciphertext...)
 
 	return ciphertext, nil
 }
 
 func (enc *encryptor) Decrypt(ciphertext []byte) (plaintext []byte, err error) {
-	// Extract the nonce from the ciphertext
-	nonce := ciphertext[:enc.aes.params.GetBlockSize()]
-	encryptedMessage := ciphertext[enc.aes.params.GetBlockSize():]
+	nonceSize := enc.aes.params.GetBlockSize()
+	if len(ciphertext) < nonceSize {
+		return nil, fmt.Errorf("ciphertext too short: got %d bytes, need at least %d", len(ciphertext), nonceSize)
+	}
 
-	// Create a new CTR stream with the extracted nonce
+	nonce := ciphertext[:nonceSize]
+	encryptedMessage := ciphertext[nonceSize:]
+
 	stream := cipher.NewCTR(enc.aes.cipher, nonce)
-
-	// Decrypt the ciphertext
 	plaintext = make([]byte, len(encryptedMessage))
 	stream.XORKeyStream(plaintext, encryptedMessage)
 

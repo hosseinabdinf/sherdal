@@ -27,14 +27,47 @@ func TestAESCtrEncryptDecrypt(t *testing.T) {
 
 	plaintext := []byte("This is a test message for AES CTR encryption.")
 
-	ciphertext := encryptor.Encrypt(plaintext)
+	ciphertext, err := encryptor.Encrypt(plaintext)
+	if err != nil {
+		t.Fatalf("Failed to encrypt plaintext: %v", err)
+	}
 
-	decryptedText := encryptor.Decrypt(ciphertext)
+	decryptedText, err := encryptor.Decrypt(ciphertext)
+	if err != nil {
+		t.Fatalf("Failed to decrypt ciphertext: %v", err)
+	}
 
 	if !bytes.Equal(plaintext, decryptedText) {
 		t.Errorf("Decrypted text does not match original plaintext.\nOriginal: %s\nDecrypted: %s", plaintext, decryptedText)
 	} else {
 		t.Logf("Decrypted text matches original plaintext.\nOriginal: %s\nDecrypted: %s", plaintext, decryptedText)
+	}
+}
+
+func TestAESCtrDecryptRejectsShortCiphertext(t *testing.T) {
+	params := GetDefaultParams()
+	key := GenerateSymKey(params)
+
+	aesCtr, err := NewAESCtr(key, params)
+	if err != nil {
+		t.Fatalf("Failed to create AES CTR: %v", err)
+	}
+
+	encryptor := aesCtr.NewEncryptor()
+	_, err = encryptor.Decrypt([]byte("short"))
+	if err == nil {
+		t.Fatal("expected an error for short ciphertext")
+	}
+}
+
+func TestNewAESCtrRejectsOversizedKeyValues(t *testing.T) {
+	params := GetDefaultParams()
+	key := GenerateSymKey(params)
+	key[0] = 256
+
+	_, err := NewAESCtr(key, params)
+	if err == nil {
+		t.Fatal("expected an error for invalid key byte value")
 	}
 }
 

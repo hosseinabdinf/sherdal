@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
 	"sherdal/hhe/sym"
 )
 
@@ -33,11 +34,14 @@ func GenerateSymKey(params Parameter) (key sym.Key) {
 
 func NewAESCtr(secretKey sym.Key, params Parameter) (AESCtr, error) {
 	if len(secretKey) != params.GetKeySize() {
-		panic("Invalid Key Length!")
+		return nil, fmt.Errorf("invalid key length: got %d bytes, want %d", len(secretKey), params.GetKeySize())
 	}
 
 	secretKeyBytes := make([]byte, params.GetKeySize())
 	for i := 0; i < params.GetKeySize(); i++ {
+		if secretKey[i] > 0xFF {
+			return nil, fmt.Errorf("invalid key byte at index %d: %d", i, secretKey[i])
+		}
 		secretKeyBytes[i] = byte(secretKey[i])
 	}
 
@@ -55,7 +59,7 @@ func NewAESCtr(secretKey sym.Key, params Parameter) (AESCtr, error) {
 }
 
 func (a *aesCtr) NewEncryptor() Encryptor {
-	return &encryptor{aes: *a}
+	return &encryptor{aes: a}
 }
 
 func (a *aesCtr) KeyStream(nonce []byte) sym.Block {
