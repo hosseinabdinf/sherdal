@@ -1,6 +1,7 @@
 package aes
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
@@ -26,6 +27,35 @@ func (b *BitSet) Set(x int) {
 		b.bits[i] = uint8(x & 0x1)
 		x >>= 1
 	}
+}
+
+func (b *BitSet) SetBytes(data []byte) {
+	if len(data)*8 != b.size {
+		panic(fmt.Sprintf("invalid byte length: got %d for bitset size %d", len(data), b.size))
+	}
+
+	for i := 0; i < len(data); i++ {
+		for j := 0; j < 8; j++ {
+			b.bits[i*8+j] = (data[i] >> uint(j)) & 1
+		}
+	}
+}
+
+func (b *BitSet) ToBytes() []byte {
+	if b.size%8 != 0 {
+		panic("bitset size must be a multiple of 8")
+	}
+
+	out := make([]byte, b.size/8)
+	for i := 0; i < len(out); i++ {
+		var v uint8
+		for j := 0; j < 8; j++ {
+			v |= b.bits[i*8+j] << uint(j)
+		}
+		out[i] = v
+	}
+
+	return out
 }
 
 func (b *BitSet) ToULong() uint64 {
@@ -93,10 +123,21 @@ func vectorRightRotationInplace(vector []*rlwe.Ciphertext, rotNum int) {
 }
 
 func ctr(iv *BitSet, ctr uint64) *BitSet {
-	out := iv.Copy()
-	for i := iv.size - 64; i < iv.size; i++ {
-		out.bits[i] = iv.bits[i] ^ byte((ctr>>uint(i-8))&1)
+	if iv.size%8 != 0 {
+		panic("bitset size must be a multiple of 8")
 	}
+
+	ctrBytes := iv.ToBytes()
+	carry := ctr
+
+	for i := len(ctrBytes) - 1; i >= 0 && carry > 0; i-- {
+		sum := uint64(ctrBytes[i]) + (carry & 0xff)
+		ctrBytes[i] = uint8(sum)
+		carry = (carry >> 8) + (sum >> 8)
+	}
+
+	out := NewBitSet(iv.size)
+	out.SetBytes(ctrBytes)
 	return out
 }
 

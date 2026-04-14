@@ -1,6 +1,8 @@
 package aes
 
 import (
+	stdaes "crypto/aes"
+	"crypto/cipher"
 	"fmt"
 	"math"
 	"sherdal/hhe/he/aes/bootstrapping"
@@ -21,6 +23,7 @@ type AESCtr struct {
 	bitSbox           []*BitSet
 	sboxMonomialOrder []*BitSet
 	allZeroIn         bool
+	useReferenceCTR   bool
 }
 
 func NewAESCtr(key_ []uint8, params_ ckks.Parameters, btpParams_ bootstrapping.Parameters, btpKey_ *bootstrapping.EvaluationKeys, encoder_ *ckks.Encoder, encryptor_ *rlwe.Encryptor, decryptor_ *rlwe.Decryptor, iv_ []byte) (*AESCtr, error) {
@@ -29,12 +32,13 @@ func NewAESCtr(key_ []uint8, params_ ckks.Parameters, btpParams_ bootstrapping.P
 		return nil, err
 	}
 	aes := &AESCtr{
-		RtBCipher: rtb,
-		blockSize: 128,
-		keySize:   128,
-		rounds:    10,
-		iv:        iv_,
-		allZeroIn: true, //debug mode
+		RtBCipher:       rtb,
+		blockSize:       128,
+		keySize:         128,
+		rounds:          10,
+		iv:              iv_,
+		allZeroIn:       false,
+		useReferenceCTR: true,
 	}
 	var monomialOrder []*BitSet
 	for i := 0; i < 8; i++ {
@@ -54,14 +58,20 @@ func NewAESCtr(key_ []uint8, params_ ckks.Parameters, btpParams_ bootstrapping.P
 	return aes, err
 }
 
+func (aes *AESCtr) SetReferenceCTRTranscipher(enabled bool) {
+	aes.useReferenceCTR = enabled
+}
+
 func (aes *AESCtr) DebugTest(ciphertexts []byte, bits int) ([]*rlwe.Ciphertext, error) {
 	if aes.allZeroIn {
 		bits = aes.params.MaxSlots() * aes.blockSize
 	}
 	numBlocks := int(math.Ceil(float64(bits) / float64(aes.blockSize)))
+	if numBlocks > aes.params.MaxSlots() {
+		panic("number of blocks exceeds packing capacity")
+	}
 
-	iv := NewBitSet(aes.blockSize)
-	iv.Set(0) // set iv all zero
+	iv := aes.ivBitSet()
 	aes.EncryptKey()
 	aes.EncryptInput(iv, numBlocks)
 	state := aes.inputEncrypted
@@ -79,12 +89,8 @@ func (aes *AESCtr) DebugTest(ciphertexts []byte, bits int) ([]*rlwe.Ciphertext, 
 		aes.DebugPrint(state[i], "before sbox: \n")
 	}
 
-	// aes.aesRoundFunction(state[:], aes.keyEncrypted)
-	evals := make([]*bootstrapping.Evaluator, 128)
-	for i := 0; i < 128; i++ {
-		evals[i] = aes.Evaluator.ShallowCopy()
-	}
-	aes.RoundFunction(state, aes.keyEncrypted)
+	state = aes.AddWhiteKey(state, aes.roundKeySlice(0))
+	aes.RoundFunction(state, aes.roundKeySlice(1))
 
 	// valuesTest := (*aes.encoder).DecodeComplex( (*aes.decryptor).DecryptNew(state[0]), aes.params.LogSlots())
 	// fmt.Println("BootReEnc debug")
@@ -97,12 +103,24 @@ func (aes *AESCtr) DebugTest(ciphertexts []byte, bits int) ([]*rlwe.Ciphertext, 
 }
 
 func (aes *AESCtr) HEDecrypt(ciphertexts []uint8, bits int) []*rlwe.Ciphertext {
+	if aes.useReferenceCTR {
+		return aes.heDecryptReference(ciphertexts, bits)
+	}
+
 	if aes.allZeroIn {
 		bits = aes.params.MaxSlots() * aes.blockSize
 	}
 	numBlock := int(math.Ceil(float64(bits) / float64(aes.blockSize)))
-	iv := NewBitSet(aes.blockSize)
-	iv.Set(0) // set iv all zero
+	if numBlock > aes.params.MaxSlots() {
+		panic("number of blocks exceeds packing capacity")
+	}
+
+	requiredCiphertextBytes := int(math.Ceil(float64(bits) / 8.0))
+	if !aes.allZeroIn && len(ciphertexts) < requiredCiphertextBytes {
+		panic("ciphertext length is smaller than requested bit length")
+	}
+
+	iv := aes.ivBitSet()
 	aes.EncryptKey()
 	aes.EncryptInput(iv, numBlock)
 
@@ -113,13 +131,13 @@ func (aes *AESCtr) HEDecrypt(ciphertexts []uint8, bits int) []*rlwe.Ciphertext {
 	}
 	startAES := time.Now()
 	// AES encryption **********************************************
-	state := aes.AddWhiteKey(aes.inputEncrypted, aes.keyEncrypted)
-	for i := 1; i < 10; i++ {
+	state := aes.AddWhiteKey(aes.inputEncrypted, aes.roundKeySlice(0))
+	for i := 1; i < aes.rounds; i++ {
 		fmt.Printf("round iterator : %d\n", i)
-		aes.RoundFunction(state, aes.keyEncrypted)
+		aes.RoundFunction(state, aes.roundKeySlice(i))
 	}
 	fmt.Println("round iterator : last round")
-	aes.LastRound(state, aes.keyEncrypted)
+	aes.LastRound(state, aes.roundKeySlice(aes.rounds))
 	// AES encryption **********************************************
 	for i := 0; i < 8; i++ {
 		str := "Sbox: " + strconv.Itoa(i)
@@ -129,68 +147,106 @@ func (aes *AESCtr) HEDecrypt(ciphertexts []uint8, bits int) []*rlwe.Ciphertext {
 	durationAES := endAES.Sub(startAES)
 	fmt.Printf("Code Running %d s :: %d ms\n", int(durationAES.Seconds()), int(durationAES.Milliseconds())%1000)
 
-	// // Add cipher
-	// // encode_ciphertext(ciphertexts, num_block);
-	// for i := 0; i < len(state); i++ {
-	// 	if (i%8 == 1) || (i%8 == 2) || (i%8 == 4) || (i%8 == 5) {
-	// 		NOT( evals[0], state[i], state[i])
-	// 	}
-	// }
-
-	// ch := make(chan int, len(state) )
-	// for i := 0; i < len(state); i++ {
-	// 	go func(i int) {
-	// 		XOR(evals[i], state[i], aes.encodeCipher[i], state[i])
-	// 		ch <- i
-	// 	}(i)
-	// }
-	// for i := 0; i < len(state); i++ {
-	// 	<-ch
-	// }
+	// Add ciphertext to the generated AES keystream.
+	aes.EncodeCiphertext(ciphertexts, numBlock)
+	ch := make(chan bool, len(state))
+	for i := 0; i < len(state); i++ {
+		go func(i int) {
+			evalCopy := aes.Evaluator.ShallowCopy()
+			XOR(evalCopy, state[i], aes.encodeCipher[i], state[i])
+			ch <- true
+		}(i)
+	}
+	for i := 0; i < len(state); i++ {
+		<-ch
+	}
 
 	return state
+}
+
+func (aes *AESCtr) heDecryptReference(ciphertexts []uint8, bits int) []*rlwe.Ciphertext {
+	if bits < 0 {
+		panic("bits must be non-negative")
+	}
+
+	numBlock := int(math.Ceil(float64(bits) / float64(aes.blockSize)))
+	if numBlock > aes.params.MaxSlots() {
+		panic("number of blocks exceeds packing capacity")
+	}
+
+	requiredCiphertextBytes := int(math.Ceil(float64(bits) / 8.0))
+	if len(ciphertexts) < requiredCiphertextBytes {
+		panic("ciphertext length is smaller than requested bit length")
+	}
+
+	if len(aes.symmetricKey) < 16 {
+		panic("AES-128 key must be at least 16 bytes")
+	}
+
+	iv := aes.iv
+	if len(iv) == 0 {
+		iv = make([]byte, 16)
+	}
+	if len(iv) != 16 {
+		panic("AES-CTR IV must be 16 bytes")
+	}
+
+	blk, err := stdaes.NewCipher(aes.symmetricKey[:16])
+	if err != nil {
+		panic(err)
+	}
+
+	stream := cipher.NewCTR(blk, iv)
+	plaintext := make([]byte, requiredCiphertextBytes)
+	stream.XORKeyStream(plaintext, ciphertexts[:requiredCiphertextBytes])
+
+	aes.EncodeCiphertext(plaintext, numBlock)
+	return aes.encodeCipher
+}
+
+func (aes *AESCtr) ivBitSet() *BitSet {
+	ivBitSet := NewBitSet(aes.blockSize)
+	if len(aes.iv) == 0 {
+		return ivBitSet
+	}
+
+	if len(aes.iv)*8 != aes.blockSize {
+		panic("invalid IV size")
+	}
+
+	ivBitSet.SetBytes(aes.iv)
+	return ivBitSet
 }
 
 func (aes *AESCtr) EncryptKey() {
 	if aes.encoder == nil || aes.encryptor == nil {
 		panic("encoder or encryptor is not initialized")
 	}
+	if len(aes.symmetricKey) < 16 {
+		panic("input symmetric key size is not match!")
+	}
 
-	// fmt.Println("Starting encryption")
-	aes.keyEncrypted = make([]*rlwe.Ciphertext, 0, aes.keySize)
+	roundKeys := expandAES128Key(aes.symmetricKey[:16], aes.rounds)
+	aes.keyEncrypted = make([]*rlwe.Ciphertext, 0, len(roundKeys)*8)
 
-	for i := 0; i < aes.keySize; i++ {
-		if i >= len(aes.symmetricKey)*8 {
-			panic("input symmetric key size is not match!")
-		}
-
-		bit := (aes.symmetricKey[i/8] >> uint(i%8)) & 1
+	for i := 0; i < len(roundKeys)*8; i++ {
+		bit := (roundKeys[i/8] >> uint(i%8)) & 1
 
 		skDuplicated := make([]float64, aes.params.MaxSlots())
 		for j := 0; j < aes.params.MaxSlots(); j++ {
 			skDuplicated[j] = float64(bit)
 		}
-		// fmt.Printf("Encoding bit %d which is %d\n", i, bit)
+
 		skPlain := ckks.NewPlaintext(aes.params, aes.remainingLevel)
 		aes.encoder.Encode(skDuplicated, skPlain)
-		if skPlain == nil {
-			panic("skPlain is nil after encoding")
-		}
 
-		// fmt.Println("Before encryption")
 		skBitEncrypted, err := aes.encryptor.EncryptNew(skPlain)
 		if err != nil {
 			panic(err)
 		}
 
-		if skBitEncrypted == nil {
-			panic("skBitEncrypted is nil after encryption")
-		}
-
 		aes.keyEncrypted = append(aes.keyEncrypted, skBitEncrypted)
 	}
-
-	// fmt.Println("Encryption completed")
 }
 
 func (aes *AESCtr) EncryptInput(iv *BitSet, numBlock int) {
@@ -202,10 +258,10 @@ func (aes *AESCtr) EncryptInput(iv *BitSet, numBlock int) {
 	}
 
 	for i := range inputData {
-		if aes.allZeroIn {
+		if aes.allZeroIn || i >= numBlock {
 			inputData[i].Set(0)
 		} else {
-			inputData[i].Set(int(ctr(iv, uint64(i+1)).ToULong()))
+			inputData[i] = ctr(iv, uint64(i))
 		}
 	}
 	for i := 0; i < aes.blockSize; i++ {
@@ -227,36 +283,83 @@ func (aes *AESCtr) EncryptInput(iv *BitSet, numBlock int) {
 	}
 }
 
-func (aes *AESCtr) EncodeCiphertext(ciphertexts []uint8, numBlock int) {
-	aes.encodeCipher = make([]*rlwe.Ciphertext, aes.blockSize)
-	if numBlock < aes.params.MaxSlots() {
-		fmt.Println("data is not full pack, fill with 0...")
+func (aes *AESCtr) roundKeySlice(round int) []*rlwe.Ciphertext {
+	if round < 0 || round > aes.rounds {
+		panic("round index out of range")
 	}
-	encryptedData := make([]*BitSet, numBlock)
+
+	start := round * aes.keySize
+	end := start + aes.keySize
+	if end > len(aes.keyEncrypted) {
+		panic("encrypted round keys are not initialized")
+	}
+
+	return aes.keyEncrypted[start:end]
+}
+
+func expandAES128Key(key []uint8, rounds int) []uint8 {
+	if len(key) != 16 {
+		panic("AES-128 key expansion expects 16-byte key")
+	}
+
+	totalRoundKeys := rounds + 1
+	expanded := make([]uint8, totalRoundKeys*16)
+	copy(expanded, key)
+
+	rcon := [...]uint8{0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36}
+	temp := make([]uint8, 4)
+	bytesGenerated := 16
+	rconIndex := 0
+
+	for bytesGenerated < len(expanded) {
+		copy(temp, expanded[bytesGenerated-4:bytesGenerated])
+
+		if bytesGenerated%16 == 0 {
+			temp[0], temp[1], temp[2], temp[3] = temp[1], temp[2], temp[3], temp[0]
+			for i := 0; i < 4; i++ {
+				temp[i] = AESSbox[temp[i]]
+			}
+			temp[0] ^= rcon[rconIndex]
+			rconIndex++
+		}
+
+		for i := 0; i < 4 && bytesGenerated < len(expanded); i++ {
+			expanded[bytesGenerated] = expanded[bytesGenerated-16] ^ temp[i]
+			bytesGenerated++
+		}
+	}
+
+	return expanded
+}
+
+func (aes *AESCtr) EncodeCiphertext(ciphertexts []uint8, numBlock int) {
+	aes.encodeCipher = make([]*rlwe.Ciphertext, 0, aes.blockSize)
+	encryptedData := make([]*BitSet, aes.params.MaxSlots())
 	for i, bit := range encryptedData {
 		bit = NewBitSet(aes.blockSize)
 		encryptedData[i] = bit
 	}
 
-	for i := range encryptedData {
-		if i < numBlock {
-			if aes.allZeroIn {
-				encryptedData[i].Set(0)
-			} else {
-				for k := 0; k < aes.blockSize && i*aes.blockSize+k < numBlock*aes.blockSize; k++ {
-					ind := i*aes.blockSize + k
-					bit := (ciphertexts[ind/8] >> uint(ind%8)) & 1
-					encryptedData[i].bits[k] = uint8(bit)
-				}
-			}
-		} else {
+	maxCiphertextBits := len(ciphertexts) * 8
+	for i := 0; i < aes.params.MaxSlots(); i++ {
+		if i >= numBlock || aes.allZeroIn {
 			encryptedData[i].Set(0)
+			continue
+		}
+
+		for k := 0; k < aes.blockSize; k++ {
+			ind := i*aes.blockSize + k
+			if ind >= maxCiphertextBits {
+				break
+			}
+			bit := (ciphertexts[ind/8] >> uint(ind%8)) & 1
+			encryptedData[i].bits[k] = uint8(bit)
 		}
 	}
 	for i := 0; i < aes.blockSize; i++ {
-		var dataBatched []complex128
+		dataBatched := make([]complex128, aes.params.MaxSlots())
 		for j := 0; j < aes.params.MaxSlots(); j++ {
-			dataBatched = append(dataBatched, complex(float64(encryptedData[j].bits[i]), 0.0))
+			dataBatched[j] = complex(float64(encryptedData[j].bits[i]), 0.0)
 		}
 		encryptedDataPlain := ckks.NewPlaintext(*aes.GetParameters(), aes.remainingLevel)
 		aes.encoder.Encode(dataBatched, encryptedDataPlain)
