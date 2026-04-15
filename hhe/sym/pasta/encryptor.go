@@ -2,7 +2,6 @@ package pasta
 
 import (
 	"encoding/binary"
-	"math"
 	"sherdal/hhe/sym"
 	"sherdal/utils"
 )
@@ -10,38 +9,40 @@ import (
 type Encryptor interface {
 	Encrypt(plaintext sym.Plaintext) sym.Ciphertext
 	Decrypt(ciphertext sym.Ciphertext) sym.Plaintext
+	EncryptWithNonce(plaintext sym.Plaintext, nonce []byte) sym.Ciphertext
+	DecryptWithNonce(ciphertext sym.Ciphertext, nonce []byte) sym.Plaintext
 }
 
 type encryptor struct {
-	pas pasta
+	pas *pasta
 }
 
 // Encrypt plaintext vector
-func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
-	logger := utils.NewLogger(utils.DEBUG)
-	var size = uint64(len(plaintext))
-	var modulus = enc.pas.params.GetModulus()
-	var blockSize = uint64(enc.pas.params.GetBlockSize())
-	var numBlock = uint64(math.Ceil(float64(size / blockSize)))
-	if size <= blockSize {
-		diff := int(blockSize - size)
-		numBlock = uint64(1)
-		for i := 0; i < diff; i++ {
-			plaintext = append(plaintext, 0)
-		}
-		size = uint64(len(plaintext))
-	}
-	logger.PrintFormatted("Number of Block: %d", numBlock)
+func (enc *encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
+	return enc.EncryptWithNonce(plaintext, nil)
+}
 
-	nonce := make([]byte, 8)
-	binary.BigEndian.PutUint64(nonce, uint64(123456789))
+// EncryptWithNonce encrypts plaintext with caller-provided nonce.
+func (enc *encryptor) EncryptWithNonce(plaintext sym.Plaintext, nonce []byte) sym.Ciphertext {
+	logger := utils.NewLogger(utils.DEBUG)
+	size := len(plaintext)
+	if size == 0 {
+		return sym.Ciphertext{}
+	}
+
+	modulus := enc.pas.params.GetModulus()
+	blockSize := enc.pas.params.GetBlockSize()
+	numBlock := sym.CeilDiv(size, blockSize)
+	//logger.PrintFormatted("Number of Block: %d", numBlock)
+
+	nonce = sym.NormalizeNonce(nonce)
 	counter := make([]byte, 8)
 
 	ciphertext := make(sym.Ciphertext, size)
 	copy(ciphertext, plaintext)
 
-	for b := uint64(0); b < numBlock; b++ {
-		binary.BigEndian.PutUint64(counter, b)
+	for b := 0; b < numBlock; b++ {
+		binary.BigEndian.PutUint64(counter, uint64(b))
 		keyStream := enc.pas.KeyStream(nonce, counter)
 		logger.PrintSummarizedVector("keystream", keyStream, len(keyStream))
 		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
@@ -53,26 +54,31 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 }
 
 // Decrypt ciphertext vector
-func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
-	logger := utils.NewLogger(utils.DEBUG)
-	var size = uint64(len(ciphertext))
-	var modulus = enc.pas.params.GetModulus()
-	var blockSize = uint64(enc.pas.params.GetBlockSize())
-	var numBlock = uint64(math.Ceil(float64(size / blockSize)))
-	if size < blockSize {
-		panic("The length of ciphertext does not match the block size!")
+func (enc *encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
+	return enc.DecryptWithNonce(ciphertext, nil)
+}
+
+// DecryptWithNonce decrypts ciphertext with caller-provided nonce.
+func (enc *encryptor) DecryptWithNonce(ciphertext sym.Ciphertext, nonce []byte) sym.Plaintext {
+	//logger := utils.NewLogger(utils.DEBUG)
+	size := len(ciphertext)
+	if size == 0 {
+		return sym.Plaintext{}
 	}
-	logger.PrintFormatted("Number of Block: %d", numBlock)
+
+	modulus := enc.pas.params.GetModulus()
+	blockSize := enc.pas.params.GetBlockSize()
+	numBlock := sym.CeilDiv(size, blockSize)
+	//logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	plaintext := make(sym.Plaintext, size)
 	copy(plaintext, ciphertext)
 
-	nonce := make([]byte, 8)
-	binary.BigEndian.PutUint64(nonce, uint64(123456789))
+	nonce = sym.NormalizeNonce(nonce)
 	counter := make([]byte, 8)
 
-	for b := uint64(0); b < numBlock; b++ {
-		binary.BigEndian.PutUint64(counter, b)
+	for b := 0; b < numBlock; b++ {
+		binary.BigEndian.PutUint64(counter, uint64(b))
 		keyStream := enc.pas.KeyStream(nonce, counter)
 		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
 			if keyStream[i-b*blockSize] > plaintext[i] {

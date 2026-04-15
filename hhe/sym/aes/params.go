@@ -2,7 +2,7 @@ package aes
 
 import (
 	"fmt"
-	"math"
+	"sherdal/hhe/sym"
 )
 
 type Parameter interface {
@@ -48,5 +48,5 @@ func GenSymParameters(blockSize, keySize int) (Parameter, error) {
 
 // GenCiphertextCapacity returns the number of ciphertexts required to encrypt n values
 func (p parameter) GenCiphertextCapacity(n int) (num int) {
-	return int(math.Ceil(float64(n) / float64(p.BlockSize)))
+	return sym.CeilDiv(n, p.BlockSize)
 }

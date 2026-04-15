@@ -59,3 +59,39 @@ func TestHera(t *testing.T) {
 		})
 	}
 }
+
+func TestHeraEncryptDecryptPartialBlock(t *testing.T) {
+	params := Hera5Params2816
+	key := GenerateSymKey(params)
+	encryptor := NewHera(key, params).NewEncryptor()
+
+	plaintext := make(sym.Plaintext, params.GetBlockSize()+3)
+	for i := range plaintext {
+		plaintext[i] = utils.SampleZqx(rand.Reader, params.GetModulus())
+	}
+
+	nonce := []byte{0, 0, 0, 0, 0, 0, 0, 11}
+	ciphertext := encryptor.EncryptWithNonce(plaintext, nonce)
+	decrypted := encryptor.DecryptWithNonce(ciphertext, nonce)
+
+	if !reflect.DeepEqual(plaintext, decrypted) {
+		t.Fatalf("partial-block round trip mismatch\nplaintext=%v\ndecrypted=%v", plaintext, decrypted)
+	}
+}
+
+func TestHeraEncryptorKeyStreamAllocatesRows(t *testing.T) {
+	params := Hera4Params2816
+	key := GenerateSymKey(params)
+	encryptor := NewHera(key, params).NewEncryptor()
+
+	keyStream := encryptor.KeyStreamWithNonce(params.GetBlockSize()+1, []byte{0, 0, 0, 0, 0, 0, 0, 3})
+	if len(keyStream) != 2 {
+		t.Fatalf("expected 2 keystream blocks, got %d", len(keyStream))
+	}
+
+	for i := range keyStream {
+		if len(keyStream[i]) != params.GetBlockSize() {
+			t.Fatalf("expected block %d to have size %d, got %d", i, params.GetBlockSize(), len(keyStream[i]))
+		}
+	}
+}

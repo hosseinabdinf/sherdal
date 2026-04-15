@@ -4,45 +4,49 @@ import (
 	"encoding/binary"
 	"math"
 	"sherdal/hhe/sym"
-	"sherdal/utils"
 )
 
 type Encryptor interface {
 	Encrypt(plaintext sym.Plaintext) sym.Ciphertext
 	Decrypt(ciphertext sym.Ciphertext) sym.Plaintext
+	EncryptWithNonce(plaintext sym.Plaintext, nonce []byte) sym.Ciphertext
+	DecryptWithNonce(ciphertext sym.Ciphertext, nonce []byte) sym.Plaintext
 	GetPrecisionAndLoss(plaintext, decrypted []uint64) (precision float64, lossPercentage float64)
 }
 
 type encryptor struct {
-	rub rubato
+	rub *rubato
 }
 
 // Encrypt plaintext vector
-func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
-	logger := utils.NewLogger(utils.DEBUG)
-	var size = len(plaintext)
-	var modulus = enc.rub.params.GetModulus()
-	var blockSize = enc.rub.params.GetBlockSize() - 4
-	var numBlock = int(math.Ceil(float64(size / blockSize)))
-	logger.PrintFormatted("Number of Block: %d", numBlock)
+func (enc *encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
+	return enc.EncryptWithNonce(plaintext, nil)
+}
 
-	// Nonce and Counter
-	nonces := make([][]byte, numBlock)
-	// set nonce up to blockSize
-	n := 123456789
-	for i := 0; i < numBlock; i++ {
-		nonces[i] = make([]byte, 8)
-		binary.BigEndian.PutUint64(nonces[i], uint64(i+n))
+// EncryptWithNonce encrypts plaintext with a caller-provided nonce seed.
+func (enc *encryptor) EncryptWithNonce(plaintext sym.Plaintext, nonce []byte) sym.Ciphertext {
+	//logger := utils.NewLogger(utils.DEBUG)
+	size := len(plaintext)
+	if size == 0 {
+		return sym.Ciphertext{}
 	}
+
+	modulus := enc.rub.params.GetModulus()
+	blockSize := enc.rub.params.GetBlockSize() - 4
+	numBlock := sym.CeilDiv(size, blockSize)
+	//logger.PrintFormatted("Number of Block: %d", numBlock)
+
+	nonceSeed := sym.NonceSeed(nonce)
+	nonceBuf := make([]byte, sym.NonceSize)
 	counter := make([]byte, 8)
 
 	ciphertext := make(sym.Ciphertext, size)
 	copy(ciphertext, plaintext)
 
 	for b := 0; b < numBlock; b++ {
+		sym.FillNonce(nonceBuf, nonceSeed, b)
 		binary.BigEndian.PutUint64(counter, uint64(b+1))
-		keyStream := make(sym.Block, blockSize)
-		copy(keyStream, enc.rub.KeyStream(nonces[b], counter))
+		keyStream := enc.rub.KeyStream(nonceBuf, counter)
 		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
 			ciphertext[i] = (ciphertext[i] + keyStream[i-b*blockSize]) % modulus
 		}
@@ -52,31 +56,34 @@ func (enc encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 }
 
 // Decrypt ciphertext vector
-func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
-	logger := utils.NewLogger(utils.DEBUG)
-	var size = len(ciphertext)
-	var modulus = enc.rub.params.GetModulus()
-	var blockSize = enc.rub.params.GetBlockSize() - 4
-	var numBlock = int(math.Ceil(float64(size / blockSize)))
-	logger.PrintFormatted("Number of Block: %d", numBlock)
+func (enc *encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
+	return enc.DecryptWithNonce(ciphertext, nil)
+}
 
-	// Nonce and Counter
-	nonces := make([][]byte, numBlock)
-	// set nonce up to blockSize
-	n := 123456789
-	for i := 0; i < numBlock; i++ {
-		nonces[i] = make([]byte, 8)
-		binary.BigEndian.PutUint64(nonces[i], uint64(i+n))
+// DecryptWithNonce decrypts ciphertext with a caller-provided nonce seed.
+func (enc *encryptor) DecryptWithNonce(ciphertext sym.Ciphertext, nonce []byte) sym.Plaintext {
+	//logger := utils.NewLogger(utils.DEBUG)
+	size := len(ciphertext)
+	if size == 0 {
+		return sym.Plaintext{}
 	}
+
+	modulus := enc.rub.params.GetModulus()
+	blockSize := enc.rub.params.GetBlockSize() - 4
+	numBlock := sym.CeilDiv(size, blockSize)
+	//logger.PrintFormatted("Number of Block: %d", numBlock)
+
+	nonceSeed := sym.NonceSeed(nonce)
+	nonceBuf := make([]byte, sym.NonceSize)
 	counter := make([]byte, 8)
 
 	plaintext := make(sym.Plaintext, size)
 	copy(plaintext, ciphertext)
 
 	for b := 0; b < numBlock; b++ {
+		sym.FillNonce(nonceBuf, nonceSeed, b)
 		binary.BigEndian.PutUint64(counter, uint64(b+1))
-		keyStream := make(sym.Block, blockSize)
-		copy(keyStream, enc.rub.KeyStream(nonces[b], counter))
+		keyStream := enc.rub.KeyStream(nonceBuf, counter)
 		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
 			if keyStream[i-b*blockSize] > plaintext[i] {
 				plaintext[i] += modulus
@@ -91,7 +98,7 @@ func (enc encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
 // GetPrecisionAndLoss return the average precision and lost percentage
 // we have a small data loss in Rubato because of adding Gaussian Noise
 // during the encryption
-func (enc encryptor) GetPrecisionAndLoss(plaintext, decrypted []uint64) (precision float64, lossPercentage float64) {
+func (enc *encryptor) GetPrecisionAndLoss(plaintext, decrypted []uint64) (precision float64, lossPercentage float64) {
 	if len(plaintext) != len(decrypted) {
 		panic("plaintext and decrypted slices must have the same length")
 	}
@@ -100,15 +107,22 @@ func (enc encryptor) GetPrecisionAndLoss(plaintext, decrypted []uint64) (precisi
 	var totalLoss float64
 
 	for i := range plaintext {
-		diff := float64(decrypted[i]) - float64(plaintext[i])
-
-		if plaintext[i] != 0 {
-			totalPrecision += (1 - (diff / float64(plaintext[i]))) * 100
-		} else {
-			totalPrecision += 100
+		if plaintext[i] == 0 {
+			if decrypted[i] == 0 {
+				totalPrecision += 100
+				continue
+			}
+			totalLoss += 100
+			continue
 		}
 
-		totalLoss += (diff / float64(plaintext[i])) * 100
+		relativeLoss := math.Abs(float64(decrypted[i])-float64(plaintext[i])) / float64(plaintext[i]) * 100
+		if relativeLoss > 100 {
+			relativeLoss = 100
+		}
+
+		totalLoss += relativeLoss
+		totalPrecision += 100 - relativeLoss
 	}
 
 	// Average precision and loss percentage over all elements

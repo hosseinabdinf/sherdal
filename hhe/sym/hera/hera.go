@@ -2,6 +2,7 @@ package hera
 
 import (
 	"crypto/rand"
+	"fmt"
 	"golang.org/x/crypto/sha3"
 	"sherdal/hhe/sym"
 	"sherdal/utils"
@@ -21,6 +22,21 @@ type hera struct {
 	p         uint64
 }
 
+func newHera(secretKey sym.Key, params Parameter) (*hera, error) {
+	if len(secretKey) != params.GetBlockSize() {
+		return nil, fmt.Errorf("invalid key length: got %d, want %d", len(secretKey), params.GetBlockSize())
+	}
+
+	return &hera{
+		params:    params,
+		shake:     nil,
+		secretKey: sym.CloneKey(secretKey),
+		state:     make(sym.Block, params.GetBlockSize()),
+		p:         params.GetModulus(),
+		rcs:       nil,
+	}, nil
+}
+
 // GenerateSymKey takes the parameter set and generate a secure symmetric key
 func GenerateSymKey(params Parameter) (key sym.Key) {
 	key = make(sym.Key, params.BlockSize)
@@ -34,24 +50,27 @@ func GenerateSymKey(params Parameter) (key sym.Key) {
 
 // NewHera return a new instance of Hera cipher
 func NewHera(secretKey sym.Key, params Parameter) Hera {
-	if len(secretKey) != params.GetBlockSize() {
-		panic("Invalid Key Length!")
-	}
-
-	state := make(sym.Block, params.GetBlockSize())
-	her := &hera{
-		params:    params,
-		shake:     nil,
-		secretKey: secretKey,
-		state:     state,
-		p:         params.GetModulus(),
-		rcs:       nil,
+	her, err := NewHeraChecked(secretKey, params)
+	if err != nil {
+		panic(err)
 	}
 	return her
 }
 
+func NewHeraChecked(secretKey sym.Key, params Parameter) (Hera, error) {
+	return newHera(secretKey, params)
+}
+
 func (her *hera) NewEncryptor() Encryptor {
-	return &encryptor{her: *her}
+	return &encryptor{her: her.runtime()}
+}
+
+func (her *hera) runtime() *hera {
+	clone, err := newHera(her.secretKey, her.params)
+	if err != nil {
+		panic(err)
+	}
+	return clone
 }
 
 func (her *hera) KeyStream(nonce []byte) (ks sym.Block) {
@@ -76,7 +95,7 @@ func (her *hera) KeyStream(nonce []byte) (ks sym.Block) {
 	her.mixColumns()
 	her.mixRows()
 	her.keySchedule(her.params.GetRounds())
-	ks = her.state
+	ks = sym.CloneBlock(her.state)
 	return
 }
 

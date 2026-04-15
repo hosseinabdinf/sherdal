@@ -2,6 +2,8 @@ package rubato
 
 import (
 	"crypto/rand"
+	"math"
+	"reflect"
 	"sherdal/hhe/sym"
 	"sherdal/utils"
 	"testing"
@@ -12,7 +14,7 @@ func TestRubato(t *testing.T) {
 	for _, tc := range TestsVector {
 		// generate symmetric key
 		var key sym.Key
-		t.Run("HeraSymKeyGen", func(t *testing.T) {
+		t.Run("RubatoSymKeyGen", func(t *testing.T) {
 			key = GenerateSymKey(tc.Params)
 		})
 
@@ -57,5 +59,40 @@ func TestRubato(t *testing.T) {
 				t.Fail()
 			}
 		})
+	}
+}
+
+func TestRubatoEncryptDecryptPartialBlock(t *testing.T) {
+	params := Rubato5Param2616
+	params.Sigma = 0
+
+	key := GenerateSymKey(params)
+	encryptor := NewRubato(key, params).NewEncryptor()
+
+	payloadSize := params.GetBlockSize() - 4
+	plaintext := make(sym.Plaintext, payloadSize+3)
+	for i := range plaintext {
+		plaintext[i] = utils.SampleZq(rand.Reader, params.GetModulus())
+	}
+
+	nonce := []byte{0, 0, 0, 0, 0, 0, 0, 5}
+	ciphertext := encryptor.EncryptWithNonce(plaintext, nonce)
+	decrypted := encryptor.DecryptWithNonce(ciphertext, nonce)
+
+	if !reflect.DeepEqual(plaintext, decrypted) {
+		t.Fatalf("partial-block round trip mismatch\nplaintext=%v\ndecrypted=%v", plaintext, decrypted)
+	}
+}
+
+func TestRubatoPrecisionHandlesZeroPlaintext(t *testing.T) {
+	params := Rubato5Param2616
+	encryptor := NewRubato(GenerateSymKey(params), params).NewEncryptor()
+
+	precision, loss := encryptor.GetPrecisionAndLoss([]uint64{0, 0, 0, 0, 0, 0, 10}, []uint64{0, 0, 0, 0, 0, 0, 9})
+	if math.IsNaN(precision) || math.IsInf(precision, 0) {
+		t.Fatalf("precision should be finite, got %v", precision)
+	}
+	if math.IsNaN(loss) || math.IsInf(loss, 0) {
+		t.Fatalf("loss should be finite, got %v", loss)
 	}
 }

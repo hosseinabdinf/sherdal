@@ -42,13 +42,14 @@ func TestPasta3(t *testing.T) {
 			logger.PrintMemUsage("Pasta3DecryptionTest")
 		})
 
-		logger.PrintFormatted("[Rounds=%d | Modulus=%d | KeySize=%d | BlockSize=%d]", tc.Params.Rounds, tc.Params.Modulus, tc.Params.KeySize, tc.Params.BlockSize)
+		logger.PrintFormatted("TestPasta3: [Rounds=%d | Modulus=%d | KeySize=%d | BlockSize=%d]",
+			tc.Params.Rounds, tc.Params.Modulus, tc.Params.KeySize, tc.Params.BlockSize)
 		logger.PrintSummarizedVector("symKey", key, len(key))
 		logger.PrintSummarizedVector("ciphertext", ciphertext, len(ciphertext))
 		logger.PrintSummarizedVector("plaintext", plaintext, len(plaintext))
 		logger.PrintSummarizedVector("decrypted", decrypted, len(decrypted))
 
-		t.Run("PastaTest", func(t *testing.T) {
+		t.Run("TestPasta3", func(t *testing.T) {
 			if reflect.DeepEqual(plaintext, decrypted) {
 				logger.PrintMessage("Got the same plaintext, it is working fine.")
 			} else {
@@ -56,24 +57,6 @@ func TestPasta3(t *testing.T) {
 				t.Fail()
 			}
 		})
-
-		//t.Run("Test", func(t *testing.T) {
-		//	newCiphertext := encryptor.Encrypt(plaintext)
-		//	newPlaintext := encryptor.Decrypt(newCiphertext)
-		//
-		//	if reflect.DeepEqual(plaintext, newPlaintext) {
-		//		logger.PrintMessage("Got the same plaintext, it is working fine.")
-		//	} else {
-		//		logger.PrintMessage("The plaintext after DEC is different, decryption failure!")
-		//		t.Fail()
-		//	}
-		//	if reflect.DeepEqual(tc.ExpCipherText, newCiphertext) {
-		//		logger.PrintMessage("Got the same ciphertext, it is working fine.")
-		//	} else {
-		//		logger.PrintMessage("The ciphertext after ENC is different, encryption failure!")
-		//		t.Fail()
-		//	}
-		//})
 	}
 }
 
@@ -108,13 +91,14 @@ func TestPasta4(t *testing.T) {
 			decrypted = encryptor.Decrypt(ciphertext)
 		})
 
-		logger.PrintFormatted("[Rounds=%d | Modulus=%d | KeySize=%d | BlockSize=%d]", tc.Params.Rounds, tc.Params.Modulus, tc.Params.KeySize, tc.Params.BlockSize)
+		logger.PrintFormatted("TestPasta4: [Rounds=%d | Modulus=%d | KeySize=%d | BlockSize=%d]",
+			tc.Params.Rounds, tc.Params.Modulus, tc.Params.KeySize, tc.Params.BlockSize)
 		logger.PrintSummarizedVector("symKey", key, len(key))
 		logger.PrintSummarizedVector("ciphertext", ciphertext, len(ciphertext))
 		logger.PrintSummarizedVector("plaintext", plaintext, len(plaintext))
 		logger.PrintSummarizedVector("decrypted", decrypted, len(decrypted))
 
-		t.Run("PastaTest", func(t *testing.T) {
+		t.Run("TestPasta4", func(t *testing.T) {
 			if reflect.DeepEqual(plaintext, decrypted) {
 				logger.PrintMessage("Got the same plaintext, it is working fine.")
 			} else {
@@ -122,23 +106,24 @@ func TestPasta4(t *testing.T) {
 				t.Fail()
 			}
 		})
+	}
+}
 
-		//t.Run("test", func(t *testing.T) {
-		//	newCiphertext := encryptor.Encrypt(plaintext)
-		//	newPlaintext := encryptor.Decrypt(newCiphertext)
-		//
-		//	if reflect.DeepEqual(plaintext, newPlaintext) {
-		//		logger.PrintMessage("Got the same plaintext, it is working fine.")
-		//	} else {
-		//		logger.PrintMessage("The plaintext after DEC is different, decryption failure!")
-		//		t.Fail()
-		//	}
-		//	if reflect.DeepEqual(tc.ExpCipherText, newCiphertext) {
-		//		logger.PrintMessage("Got the same ciphertext, it is working fine.")
-		//	} else {
-		//		logger.PrintMessage("The ciphertext after ENC is different, encryption failure!")
-		//		t.Fail()
-		//	}
-		//})
+func TestPastaEncryptDecryptPartialBlock(t *testing.T) {
+	params := Pasta4Param3215
+	key := GenerateSymKey(params)
+	encryptor := NewPasta(key, params).NewEncryptor()
+
+	plaintext := make(sym.Plaintext, params.GetBlockSize()+3)
+	for i := range plaintext {
+		plaintext[i] = utils.SampleZq(rand.Reader, params.GetModulus())
+	}
+
+	nonce := []byte{0, 0, 0, 0, 0, 0, 0, 7}
+	ciphertext := encryptor.EncryptWithNonce(plaintext, nonce)
+	decrypted := encryptor.DecryptWithNonce(ciphertext, nonce)
+
+	if !reflect.DeepEqual(plaintext, decrypted) {
+		t.Fatalf("partial-block round trip mismatch\nplaintext=%v\ndecrypted=%v", plaintext, decrypted)
 	}
 }

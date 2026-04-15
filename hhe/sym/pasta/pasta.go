@@ -3,6 +3,7 @@ package pasta
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"golang.org/x/crypto/sha3"
 	"math/big"
 	"sherdal/hhe/sym"
@@ -24,6 +25,30 @@ type pasta struct {
 	maxPrimeSize uint64
 }
 
+func newPasta(secretKey sym.Key, params Parameter) (*pasta, error) {
+	if len(secretKey) != params.GetKeySize() {
+		return nil, fmt.Errorf("invalid key length: got %d, want %d", len(secretKey), params.GetKeySize())
+	}
+
+	mps := uint64(0)
+	prime := params.Modulus
+	for prime > 0 {
+		mps++
+		prime >>= 1
+	}
+	mps = (1 << mps) - 1
+
+	return &pasta{
+		params:       params,
+		shake:        nil,
+		secretKey:    sym.CloneKey(secretKey),
+		state1:       make(sym.Block, params.GetBlockSize()),
+		state2:       make(sym.Block, params.GetBlockSize()),
+		p:            params.GetModulus(),
+		maxPrimeSize: mps,
+	}, nil
+}
+
 // GenerateSymKey takes the parameter set and generate a secure symmetric key
 func GenerateSymKey(params Parameter) (key sym.Key) {
 	key = make(sym.Key, params.KeySize)
@@ -38,67 +63,27 @@ func GenerateSymKey(params Parameter) (key sym.Key) {
 
 // NewPasta return a new instance of pasta cipher
 func NewPasta(secretKey sym.Key, params Parameter) Pasta {
-	if len(secretKey) != params.GetKeySize() {
-		panic("Invalid Key Length!")
-	}
-
-	mps := uint64(0) // max prime size
-	prime := params.Modulus
-
-	// count the number of valid bits of prime number, using shift to right operation
-	for prime > 0 {
-		mps++
-		prime >>= 1
-	}
-
-	// set mps to the maximum value that can be represented with mps bits
-	mps = (1 << mps) - 1
-
-	// init empty states
-	state1 := make(sym.Block, params.GetBlockSize())
-	state2 := make(sym.Block, params.GetBlockSize())
-
-	// create a new pasta instance
-	pas := &pasta{
-		params:       params,
-		shake:        nil,
-		secretKey:    secretKey,
-		state1:       state1,
-		state2:       state2,
-		p:            params.GetModulus(),
-		maxPrimeSize: mps,
+	pas, err := NewPastaChecked(secretKey, params)
+	if err != nil {
+		panic(err)
 	}
 	return pas
 }
 
+func NewPastaChecked(secretKey sym.Key, params Parameter) (Pasta, error) {
+	return newPasta(secretKey, params)
+}
+
 func (pas *pasta) NewEncryptor() Encryptor {
-	return &encryptor{pas: *pas}
+	return &encryptor{pas: pas.runtime()}
 }
 
-// prepareOneBlock prepare the first block and call preProcess function
-func (pas *pasta) prepareOneBlock() {
-	nonce := make([]byte, 8)
-	binary.BigEndian.PutUint64(nonce, uint64(123456789))
-	counter := make([]byte, 8)
-	binary.BigEndian.PutUint64(counter, uint64(1))
-	pas.preProcess(nonce, counter)
-}
-
-// preProcess make the XOF and matrices and vectors
-func (pas *pasta) preProcess(nonce []byte, counter []byte) {
-	numRounds := pas.params.GetRounds()
-	pas.initShake(nonce, counter)
-	mats1 := make(sym.Vector3D, numRounds+1)
-	mats2 := make(sym.Vector3D, numRounds+1)
-	rcs1 := make(sym.Matrix, numRounds+1)
-	rcs2 := make(sym.Matrix, numRounds+1)
-
-	for r := 0; r <= numRounds; r++ {
-		mats1[r] = pas.getRandomMatrix()
-		mats2[r] = pas.getRandomMatrix()
-		rcs1[r] = pas.getRandomVector(true)
-		rcs2[r] = pas.getRandomVector(true)
+func (pas *pasta) runtime() *pasta {
+	clone, err := newPasta(pas.secretKey, pas.params)
+	if err != nil {
+		panic(err)
 	}
+	return clone
 }
 
 // KeyStream generate pasta secretKey stream based on nonce and counter
@@ -117,7 +102,7 @@ func (pas *pasta) KeyStream(nonce []byte, counter []byte) sym.Block {
 
 	// final affine with mixing afterward
 	pas.linearLayer()
-	return pas.state1
+	return sym.CloneBlock(pas.state1)
 }
 
 // Round execute pasta cube s_box and f_box per round
@@ -318,33 +303,6 @@ func (pas *pasta) getRandomVector(allowZero bool) sym.Block {
 [	r1	r2	r3	...	rt	]
 */
 
-// GetRandomMatrix generate a random invertible matrix
-func (pas *pasta) getRandomMatrix() sym.Matrix {
-	ps := pas.params.GetBlockSize()
-	mat := make(sym.Matrix, ps) // mat[ps][ps]
-	for i := range mat {
-		mat[i] = make(sym.Block, ps) // mat[i] = [ps]
-	}
-	mat[0] = pas.getRandomVector(false)
-	for j := 1; j < ps; j++ {
-		mat[j] = pas.calculateRow(mat[j-1], mat[0])
-	}
-	return mat
-}
-
-// GetRcVector return a vector of random elements, the vector size will be (size+plainSize)
-func (pas *pasta) getRcVector(size int) sym.Block {
-	ps := pas.params.GetBlockSize()
-	rc := make(sym.Block, size+ps)
-	for i := 0; i < ps; i++ {
-		rc[i] = pas.generateRandomFieldElement(false)
-	}
-	for i := size; i < (size + ps); i++ {
-		rc[i] = pas.generateRandomFieldElement(false)
-	}
-	return rc
-}
-
 // calculateRow
 func (pas *pasta) calculateRow(previousRow, firstRow sym.Block) sym.Block {
 	ps := pas.params.GetBlockSize()
@@ -367,16 +325,4 @@ func (pas *pasta) calculateRow(previousRow, firstRow sym.Block) sym.Block {
 		output[j] = temp.Uint64()
 	}
 	return output
-}
-
-func (pas *pasta) ShallowCopy() Pasta {
-	return &pasta{
-		p:            pas.p,
-		secretKey:    pas.secretKey,
-		maxPrimeSize: pas.maxPrimeSize,
-		shake:        pas.shake,
-		params:       pas.params,
-		state1:       pas.state1,
-		state2:       pas.state2,
-	}
 }

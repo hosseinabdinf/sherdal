@@ -2,6 +2,7 @@ package rubato
 
 import (
 	"crypto/rand"
+	"fmt"
 	"github.com/tuneinsight/lattigo/v6/ring"
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"golang.org/x/crypto/sha3"
@@ -24,6 +25,22 @@ type rubato struct {
 	sampler   *mUtils.GaussianSampler
 }
 
+func newRubato(secretKey sym.Key, params Parameter) (*rubato, error) {
+	if len(secretKey) != params.GetBlockSize() {
+		return nil, fmt.Errorf("invalid key length: got %d, want %d", len(secretKey), params.GetBlockSize())
+	}
+
+	return &rubato{
+		params:    params,
+		shake:     nil,
+		secretKey: sym.CloneKey(secretKey),
+		state:     make(sym.Block, params.GetBlockSize()),
+		p:         params.GetModulus(),
+		rcs:       nil,
+		sampler:   nil,
+	}, nil
+}
+
 // GenerateSymKey takes the parameter set and generate a secure symmetric key
 func GenerateSymKey(params Parameter) (key sym.Key) {
 	key = make(sym.Key, params.BlockSize)
@@ -37,25 +54,27 @@ func GenerateSymKey(params Parameter) (key sym.Key) {
 
 // NewRubato return a new instance of Rubato cipher
 func NewRubato(secretKey sym.Key, params Parameter) Rubato {
-	if len(secretKey) != params.GetBlockSize() {
-		panic("Invalid Key Length!")
-	}
-
-	state := make(sym.Block, params.GetBlockSize())
-	rub := &rubato{
-		params:    params,
-		shake:     nil,
-		secretKey: secretKey,
-		state:     state,
-		p:         params.GetModulus(),
-		rcs:       nil,
-		sampler:   nil,
+	rub, err := NewRubatoChecked(secretKey, params)
+	if err != nil {
+		panic(err)
 	}
 	return rub
 }
 
+func NewRubatoChecked(secretKey sym.Key, params Parameter) (Rubato, error) {
+	return newRubato(secretKey, params)
+}
+
 func (rub *rubato) NewEncryptor() Encryptor {
-	return &encryptor{rub: *rub}
+	return &encryptor{rub: rub.runtime()}
+}
+
+func (rub *rubato) runtime() *rubato {
+	clone, err := newRubato(rub.secretKey, rub.params)
+	if err != nil {
+		panic(err)
+	}
+	return clone
 }
 
 // KeyStream returns a vector of [BlockSize - 4][uint64] elements as key stream
@@ -97,7 +116,7 @@ func (rub *rubato) KeyStream(nonce []byte, counter []byte) (ks sym.Block) {
 	for i := 0; i < blockSize; i++ {
 		rub.state[i] = (rub.state[i] + rub.rcs[rounds][i]) % p
 	}
-	ks = rub.state[0 : blockSize-4]
+	ks = sym.CloneBlock(rub.state[0 : blockSize-4])
 	return
 }
 
