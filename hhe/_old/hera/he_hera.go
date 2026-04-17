@@ -3,7 +3,7 @@ package hera
 import (
 	"crypto/rand"
 	"math"
-	ckks_fv2 "sherdal/internal/old_fv"
+	oldfv "sherdal/internal/old_fv"
 	hera2 "sherdal/ske/hera"
 	"sherdal/utils"
 )
@@ -12,35 +12,35 @@ type HEHera struct {
 	logger           utils.Logger
 	paramIndex       int
 	fullCoefficients bool
-	params           *ckks_fv2.Parameters
+	params           *oldfv.Parameters
 	symParams        hera2.Parameter
-	hbtp             *ckks_fv2.HalfBootstrapper
-	hbtpParams       *ckks_fv2.HalfBootParameters
-	keyGenerator     ckks_fv2.KeyGenerator
-	fvEncoder        ckks_fv2.MFVEncoder
-	ckksEncoder      ckks_fv2.CKKSEncoder
-	ckksDecryptor    ckks_fv2.CKKSDecryptor
-	sk               *ckks_fv2.SecretKey
-	pk               *ckks_fv2.PublicKey
-	fvEncryptor      ckks_fv2.MFVEncryptor
-	fvEvaluator      ckks_fv2.MFVEvaluator
-	plainCKKSRingTs  []*ckks_fv2.PlaintextRingT
-	plaintexts       []*ckks_fv2.Plaintext
+	hbtp             *oldfv.HalfBootstrapper
+	hbtpParams       *oldfv.HalfBootParameters
+	keyGenerator     oldfv.KeyGenerator
+	fvEncoder        oldfv.MFVEncoder
+	ckksEncoder      oldfv.CKKSEncoder
+	ckksDecryptor    oldfv.CKKSDecryptor
+	sk               *oldfv.SecretKey
+	pk               *oldfv.PublicKey
+	fvEncryptor      oldfv.MFVEncryptor
+	fvEvaluator      oldfv.MFVEvaluator
+	plainCKKSRingTs  []*oldfv.PlaintextRingT
+	plaintexts       []*oldfv.Plaintext
 
 	fvHera         MFVHera
 	messageScaling float64
 	heraModDown    []int
 	stcModDown     []int
-	pDcds          [][]*ckks_fv2.PtDiagMatrixT
-	rotkeys        *ckks_fv2.RotationKeySet
-	rlk            *ckks_fv2.RelinearizationKey
-	hbtpKey        ckks_fv2.BootstrappingKey
+	pDcds          [][]*oldfv.PtDiagMatrixT
+	rotkeys        *oldfv.RotationKeySet
+	rlk            *oldfv.RelinearizationKey
+	hbtpKey        oldfv.BootstrappingKey
 
 	N            int
 	outSize      int
 	coefficients [][]float64
-	symKeyCt     []*ckks_fv2.Ciphertext
-	ciphertext   *ckks_fv2.Ciphertext
+	symKeyCt     []*oldfv.Ciphertext
+	ciphertext   *oldfv.Ciphertext
 }
 
 func NewHEHera() *HEHera {
@@ -69,7 +69,7 @@ func NewHEHera() *HEHera {
 		pDcds:            nil,
 		rotkeys:          nil,
 		rlk:              nil,
-		hbtpKey:          ckks_fv2.BootstrappingKey{},
+		hbtpKey:          oldfv.BootstrappingKey{},
 		N:                0,
 		outSize:          0,
 		coefficients:     nil,
@@ -84,7 +84,7 @@ func (hH *HEHera) InitParams(paramIndex int, symParams hera2.Parameter) {
 	hH.paramIndex = paramIndex
 	hH.symParams = symParams
 	hH.outSize = symParams.BlockSize
-	hH.hbtpParams = ckks_fv2.RtFHeraParams[paramIndex] // set to 2, using Hera 128af
+	hH.hbtpParams = oldfv.RtFHeraParams[paramIndex] // set to 2, using Hera 128af
 	hH.params, err = hH.hbtpParams.Params()
 	if err != nil {
 		panic(err)
@@ -95,11 +95,11 @@ func (hH *HEHera) InitParams(paramIndex int, symParams hera2.Parameter) {
 	hH.params.SetLogFVSlots(hH.params.LogN())
 	hH.messageScaling = float64(hH.params.PlainModulus()) / hH.hbtpParams.MessageRatio
 	if symParams.Rounds == 4 {
-		hH.heraModDown = ckks_fv2.HeraModDownParams80[paramIndex].CipherModDown
-		hH.stcModDown = ckks_fv2.HeraModDownParams80[paramIndex].StCModDown
+		hH.heraModDown = oldfv.HeraModDownParams80[paramIndex].CipherModDown
+		hH.stcModDown = oldfv.HeraModDownParams80[paramIndex].StCModDown
 	} else {
-		hH.heraModDown = ckks_fv2.HeraModDownParams128[paramIndex].CipherModDown
-		hH.stcModDown = ckks_fv2.HeraModDownParams128[paramIndex].StCModDown
+		hH.heraModDown = oldfv.HeraModDownParams128[paramIndex].CipherModDown
+		hH.stcModDown = oldfv.HeraModDownParams128[paramIndex].StCModDown
 	}
 	// full Coefficients denotes whether full coefficients are used for data encoding
 	switch paramIndex {
@@ -116,13 +116,13 @@ func (hH *HEHera) InitParams(paramIndex int, symParams hera2.Parameter) {
 }
 
 func (hH *HEHera) HEKeyGen() {
-	hH.keyGenerator = ckks_fv2.NewKeyGenerator(hH.params)
+	hH.keyGenerator = oldfv.NewKeyGenerator(hH.params)
 	hH.sk, hH.pk = hH.keyGenerator.GenKeyPairSparse(hH.hbtpParams.H)
 
-	hH.fvEncoder = ckks_fv2.NewMFVEncoder(hH.params)
-	hH.ckksEncoder = ckks_fv2.NewCKKSEncoder(hH.params)
-	hH.fvEncryptor = ckks_fv2.NewMFVEncryptorFromPk(hH.params, hH.pk)
-	hH.ckksDecryptor = ckks_fv2.NewCKKSDecryptor(hH.params, hH.sk)
+	hH.fvEncoder = oldfv.NewMFVEncoder(hH.params)
+	hH.ckksEncoder = oldfv.NewCKKSEncoder(hH.params)
+	hH.fvEncryptor = oldfv.NewMFVEncryptorFromPk(hH.params, hH.pk)
+	hH.ckksDecryptor = oldfv.NewCKKSDecryptor(hH.params, hH.sk)
 }
 
 func (hH *HEHera) HalfBootKeyGen(radix int) {
@@ -136,18 +136,18 @@ func (hH *HEHera) HalfBootKeyGen(radix int) {
 	}
 	hH.rotkeys = hH.keyGenerator.GenRotationKeysForRotations(rotations, true, hH.sk)
 	hH.rlk = hH.keyGenerator.GenRelinearizationKey(hH.sk)
-	hH.hbtpKey = ckks_fv2.BootstrappingKey{Rlk: hH.rlk, Rtks: hH.rotkeys}
+	hH.hbtpKey = oldfv.BootstrappingKey{Rlk: hH.rlk, Rtks: hH.rotkeys}
 }
 
 func (hH *HEHera) InitHalfBootstrapper() {
 	var err error
-	if hH.hbtp, err = ckks_fv2.NewHalfBootstrapper(hH.params, hH.hbtpParams, hH.hbtpKey); err != nil {
+	if hH.hbtp, err = oldfv.NewHalfBootstrapper(hH.params, hH.hbtpParams, hH.hbtpKey); err != nil {
 		panic(err)
 	}
 }
 
 func (hH *HEHera) InitEvaluator() {
-	hH.fvEvaluator = ckks_fv2.NewMFVEvaluator(hH.params, ckks_fv2.EvaluationKey{Rlk: hH.rlk, Rtks: hH.rotkeys}, hH.pDcds)
+	hH.fvEvaluator = oldfv.NewMFVEvaluator(hH.params, oldfv.EvaluationKey{Rlk: hH.rlk, Rtks: hH.rotkeys}, hH.pDcds)
 }
 
 func (hH *HEHera) InitCoefficients() {
@@ -188,7 +188,7 @@ func (hH *HEHera) DataToCoefficients(data [][]float64, size int) {
 }
 
 func (hH *HEHera) EncodeEncrypt(keystream [][]uint64, size int) {
-	hH.plainCKKSRingTs = make([]*ckks_fv2.PlaintextRingT, hH.outSize)
+	hH.plainCKKSRingTs = make([]*oldfv.PlaintextRingT, hH.outSize)
 	for s := 0; s < hH.outSize; s++ {
 		hH.plainCKKSRingTs[s] = hH.ckksEncoder.EncodeCoeffsRingTNew(hH.coefficients[s], hH.messageScaling)
 		poly := hH.plainCKKSRingTs[s].Value()[0]
@@ -200,9 +200,9 @@ func (hH *HEHera) EncodeEncrypt(keystream [][]uint64, size int) {
 }
 
 func (hH *HEHera) ScaleUp() {
-	hH.plaintexts = make([]*ckks_fv2.Plaintext, hH.outSize)
+	hH.plaintexts = make([]*oldfv.Plaintext, hH.outSize)
 	for s := 0; s < hH.outSize; s++ {
-		hH.plaintexts[s] = ckks_fv2.NewPlaintextFVLvl(hH.params, 0)
+		hH.plaintexts[s] = oldfv.NewPlaintextFVLvl(hH.params, 0)
 		hH.fvEncoder.FVScaleUp(hH.plainCKKSRingTs[s], hH.plaintexts[s])
 	}
 }
@@ -218,7 +218,7 @@ func (hH *HEHera) EncryptSymKey(key []uint64) {
 	hH.logger.PrintMessages(">> Symmetric Key Length: ", len(hH.symKeyCt))
 }
 
-func (hH *HEHera) GetFvKeyStreams(nonces [][]byte) []*ckks_fv2.Ciphertext {
+func (hH *HEHera) GetFvKeyStreams(nonces [][]byte) []*oldfv.Ciphertext {
 	fvKeyStreams := hH.fvHera.Crypt(nonces, hH.symKeyCt, hH.heraModDown)
 	for i := 0; i < hH.outSize; i++ {
 		hH.logger.PrintMessages(">> index: ", i)
@@ -228,9 +228,9 @@ func (hH *HEHera) GetFvKeyStreams(nonces [][]byte) []*ckks_fv2.Ciphertext {
 	return fvKeyStreams
 }
 
-func (hH *HEHera) ScaleCiphertext(fvKeyStreams []*ckks_fv2.Ciphertext) {
+func (hH *HEHera) ScaleCiphertext(fvKeyStreams []*oldfv.Ciphertext) {
 	// Encrypt and mod switch to the lowest leve
-	hH.ciphertext = ckks_fv2.NewCiphertextFVLvl(hH.params, 1, 0)
+	hH.ciphertext = oldfv.NewCiphertextFVLvl(hH.params, 1, 0)
 	hH.ciphertext.Value()[0] = hH.plaintexts[0].Value()[0].CopyNew()
 	hH.fvEvaluator.Sub(hH.ciphertext, fvKeyStreams[0], hH.ciphertext)
 	hH.fvEvaluator.TransformToNTT(hH.ciphertext, hH.ciphertext)
@@ -247,8 +247,8 @@ func (hH *HEHera) ScaleCiphertext(fvKeyStreams []*ckks_fv2.Ciphertext) {
 	)
 }
 
-func (hH *HEHera) HalfBoot() *ckks_fv2.Ciphertext {
-	var ctBoot *ckks_fv2.Ciphertext
+func (hH *HEHera) HalfBoot() *oldfv.Ciphertext {
+	var ctBoot *oldfv.Ciphertext
 	if hH.fullCoefficients {
 		ctBoot, _ = hH.hbtp.HalfBoot(hH.ciphertext, false)
 	} else {

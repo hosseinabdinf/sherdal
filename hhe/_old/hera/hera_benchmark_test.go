@@ -1,6 +1,7 @@
 package hera
 
 import (
+	"crypto/rand"
 	"fmt"
 	"sherdal/internal/old_fv"
 	hera2 "sherdal/ske/hera"
@@ -30,9 +31,6 @@ func benchHEHera(tc hera2.TestContext, b *testing.B) {
 		b.Skip("skipping benchmark in short mode.")
 	}
 
-	logger := utils.NewLogger(utils.DEBUG)
-	logger.PrintDataLen(tc.Key)
-
 	heHera := NewHEHera()
 
 	var data [][]float64
@@ -40,6 +38,11 @@ func benchHEHera(tc hera2.TestContext, b *testing.B) {
 	var keyStream [][]uint64
 
 	heHera.InitParams(tc.FVParamIndex, tc.Params)
+
+	secretKey := make([]uint64, tc.Params.GetBlockSize())
+	for i := 0; i < len(secretKey); i++ {
+		secretKey[i] = utils.SampleZq(rand.Reader, tc.Params.GetModulus())
+	}
 
 	b.Run("HERA/HEKeyGen", func(b *testing.B) {
 		b.ResetTimer()
@@ -71,7 +74,7 @@ func benchHEHera(tc hera2.TestContext, b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				for i := 0; i < heHera.params.N(); i++ {
-					symHera := hera2.NewHera(tc.Key, tc.Params)
+					symHera := hera2.NewHera(secretKey, tc.Params)
 					keyStream[i] = symHera.KeyStream(nonces[i])
 				}
 			}
@@ -96,7 +99,7 @@ func benchHEHera(tc hera2.TestContext, b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				for i := 0; i < heHera.params.Slots(); i++ {
-					symHera := hera2.NewHera(tc.Key, tc.Params)
+					symHera := hera2.NewHera(secretKey, tc.Params)
 					keyStream[i] = symHera.KeyStream(nonces[i])
 				}
 			}
@@ -119,7 +122,7 @@ func benchHEHera(tc hera2.TestContext, b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_ = heHera.InitFvHera()
-			heHera.EncryptSymKey(tc.Key)
+			heHera.EncryptSymKey(secretKey)
 		}
 	})
 

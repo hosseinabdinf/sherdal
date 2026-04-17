@@ -5,7 +5,7 @@ import (
 	"math/bits"
 )
 
-// SampleZqx returns uniform random value in (0,q) by rejection sampling
+// SampleZqx returns a uniform random value in (0,q) by rejection sampling
 func SampleZqx(rand io.Reader, q uint64) (res uint64) {
 	bitLen := bits.Len64(q - 2)
 	byteLen := (bitLen + 7) / 8

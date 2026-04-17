@@ -1,10 +1,12 @@
 package hera
 
 import (
+	"crypto/rand"
 	"fmt"
 	"math"
 	"sherdal/internal/old_fv"
 	hera2 "sherdal/ske/hera"
+	"sherdal/utils"
 	"testing"
 )
 
@@ -27,7 +29,6 @@ func TestHera(t *testing.T) {
 func testHEHera(t *testing.T, tc hera2.TestContext) {
 	heHera := NewHEHera()
 	lg := heHera.logger
-	lg.PrintDataLen(tc.Key)
 
 	var data [][]float64
 	var nonces [][]byte
@@ -50,6 +51,11 @@ func testHEHera(t *testing.T, tc hera2.TestContext) {
 	heHera.InitCoefficients()
 	lg.PrintMemUsage("InitCoefficients")
 
+	secretKey := make([]uint64, tc.Params.GetBlockSize())
+	for i := 0; i < len(secretKey); i++ {
+		secretKey[i] = utils.SampleZq(rand.Reader, tc.Params.GetModulus())
+	}
+
 	if heHera.fullCoefficients {
 		data = heHera.RandomDataGen(heHera.params.N())
 		lg.PrintMemUsage("RandomDataGen")
@@ -57,7 +63,7 @@ func testHEHera(t *testing.T, tc hera2.TestContext) {
 		nonces = heHera.NonceGen(heHera.params.N())
 
 		keyStream = make([][]uint64, heHera.params.N())
-		symHera := hera2.NewHera(tc.Key, tc.Params)
+		symHera := hera2.NewHera(secretKey, tc.Params)
 		for i := 0; i < heHera.params.N(); i++ {
 			keyStream[i] = symHera.KeyStream(nonces[i])
 		}
@@ -75,7 +81,7 @@ func testHEHera(t *testing.T, tc hera2.TestContext) {
 		nonces = heHera.NonceGen(heHera.params.Slots())
 
 		keyStream = make([][]uint64, heHera.params.Slots())
-		symHera := hera2.NewHera(tc.Key, tc.Params)
+		symHera := hera2.NewHera(secretKey, tc.Params)
 		for i := 0; i < heHera.params.Slots(); i++ {
 			keyStream[i] = symHera.KeyStream(nonces[i])
 		}
@@ -95,7 +101,7 @@ func testHEHera(t *testing.T, tc hera2.TestContext) {
 	lg.PrintMemUsage("InitFvHera")
 
 	// encrypts symmetric master key using BFV on the client side
-	heHera.EncryptSymKey(tc.Key)
+	heHera.EncryptSymKey(secretKey)
 	lg.PrintMemUsage("EncryptSymKey")
 
 	// get BFV key stream using encrypted symmetric key, nonce, and counter on the server side
