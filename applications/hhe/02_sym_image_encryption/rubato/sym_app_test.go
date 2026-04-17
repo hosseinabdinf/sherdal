@@ -13,7 +13,7 @@ func TestApp(t *testing.T) {
 	img, _ := utils.GetRGBImage(scaledImgName)
 
 	// select the symmetric parameter set
-	params := rubato.Rubato5Param2616
+	params := rubato.Rubato2Param2516
 
 	t.Run("Test Symmetric Rubato: Image Encryption", func(t *testing.T) {
 		ImgEncApp(params, img.Bounds, img)

@@ -1,11 +1,12 @@
 package main
 
 import (
-	// "fmt"
 	"log"
 	"sherdal/hhe/aes"
-	bootstrapping2 "sherdal/hhe/aes/aes_bootstrapping"
 	aes2 "sherdal/ske/aes"
+
+	// "fmt"
+	bootstrapping2 "sherdal/internal/aes_bootstrapping"
 
 	// "sherdal/utils" // Removed unused import
 

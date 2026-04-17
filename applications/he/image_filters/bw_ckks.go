@@ -2,10 +2,11 @@ package applications
 
 import (
 	"fmt"
-	"github.com/tuneinsight/lattigo/v6/core/rlwe"
-	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
 	"sherdal/utils"
 	"strconv"
+
+	"github.com/tuneinsight/lattigo/v6/core/rlwe"
+	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
 )
 
 // BWFilterCKKS add a bw filter to input image using ckks

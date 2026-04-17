@@ -3,10 +3,11 @@
 package linear_regression
 
 import (
-	"github.com/tuneinsight/lattigo/v6/core/rlwe"
-	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 	"math"
 	"sherdal/utils"
+
+	"github.com/tuneinsight/lattigo/v6/core/rlwe"
+	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 )
 
 type Client struct {

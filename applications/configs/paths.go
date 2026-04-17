@@ -1,6 +1,6 @@
 package configs
 
-const Dir = "configs/"
-const Keys = "keys/"
-const DatasetDir = "datasets/"
+const Dir = "applications/configs/"
+const Keys = "applications/keys/"
+const DatasetDir = "applications/datasets/"
 const DogsDir = "dogs/"
