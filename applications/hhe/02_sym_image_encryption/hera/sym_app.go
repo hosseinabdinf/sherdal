@@ -3,19 +3,19 @@ package hera
 import (
 	"image"
 	"reflect"
-	"sherdal/hhe/sym/hera"
+	hera2 "sherdal/ske/hera"
 	"sherdal/utils"
 )
 
 // ImgEncApp Image Encryption Application using Hera symmetric cipher
-func ImgEncApp(params hera.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
+func ImgEncApp(params hera2.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	logger := utils.NewLogger(utils.DEBUG)
 
 	// generate symmetric key
-	symKey := hera.GenerateSymKey(params)
+	symKey := hera2.GenerateSymKey(params)
 
 	// initialize the symmetric cipher
-	symRubato := hera.NewHera(symKey, params)
+	symRubato := hera2.NewHera(symKey, params)
 	symEnc := symRubato.NewEncryptor()
 
 	// This will be equal to number of blocks and maxSlot in the HE case

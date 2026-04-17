@@ -5,8 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"sherdal/hhe"
-	homPas "sherdal/hhe/he/pasta"
-	symPas "sherdal/hhe/sym/pasta"
+	homPas "sherdal/hhe/_old/pasta"
+	symPas "sherdal/ske/pasta"
 	"sherdal/utils"
 )
 

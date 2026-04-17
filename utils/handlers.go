@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"fmt"
-	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"math"
 	"os"
-	"sherdal/hhe/sym"
+	"sherdal/ske"
 	"strings"
+
+	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )
 
 // HandleError checks the error and throws a panic if the error isn't nil
@@ -20,7 +21,7 @@ func HandleError(err error) {
 }
 
 // SavePlaintextFile save the given Plaintext as hexadecimal values
-func SavePlaintextFile(name string, p sym.Plaintext) {
+func SavePlaintextFile(name string, p ske.Plaintext) {
 	// Open a file for writing
 	file, err := os.Create(name + ".txt")
 	if err != nil {
@@ -48,7 +49,7 @@ func SavePlaintextFile(name string, p sym.Plaintext) {
 }
 
 // SaveCiphertextFile save the given Ciphertext as hexadecimal values
-func SaveCiphertextFile(name string, c sym.Ciphertext) {
+func SaveCiphertextFile(name string, c ske.Ciphertext) {
 	// Open a file for writing
 	file, err := os.Create(name + ".txt")
 	if err != nil {
@@ -157,7 +158,7 @@ func RandomFloatDataGen(col int, row int) (data [][]float64) {
 }
 
 // RotateSlice to rotate a slice by a given offset
-func RotateSlice(slice sym.Block, offset uint64) {
+func RotateSlice(slice ske.Block, offset uint64) {
 	l := len(slice)
 	if l == 0 {
 		return
@@ -172,19 +173,19 @@ func RotateSlice(slice sym.Block, offset uint64) {
 }
 
 // Reverse to reverse a slice
-func Reverse(slice sym.Block) {
+func Reverse(slice ske.Block) {
 	for i, j := 0, len(slice)-1; i < j; i, j = i+1, j-1 {
 		slice[i], slice[j] = slice[j], slice[i]
 	}
 }
 
-// ResizeSlice resize the old slice
-func ResizeSlice(oldSlice sym.Block, newLen uint64) (newSlice sym.Block) {
+// ResizeSlice resize the _old slice
+func ResizeSlice(oldSlice ske.Block, newLen uint64) (newSlice ske.Block) {
 	l := uint64(len(oldSlice))
 	if newLen == l {
 		newSlice = oldSlice
 	} else if newLen > l {
-		newSlice = append(oldSlice, make(sym.Block, newLen-l)...)
+		newSlice = append(oldSlice, make(ske.Block, newLen-l)...)
 	} else {
 		newSlice = oldSlice[:newLen]
 	}

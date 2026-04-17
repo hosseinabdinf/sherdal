@@ -1,7 +1,7 @@
 package simple
 
 import (
-	"sherdal/configs"
+	"sherdal/applications/configs"
 
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v6/schemes/ckks"

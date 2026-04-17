@@ -3,19 +3,19 @@ package pasta
 import (
 	"image"
 	"reflect"
-	"sherdal/hhe/sym/pasta"
+	pasta2 "sherdal/ske/pasta"
 	"sherdal/utils"
 )
 
 // ImgEncApp Image Encryption Application using Pasta symmetric cipher
-func ImgEncApp(params pasta.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
+func ImgEncApp(params pasta2.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	logger := utils.NewLogger(utils.DEBUG)
 
 	// generate symmetric key
-	symKey := pasta.GenerateSymKey(params)
+	symKey := pasta2.GenerateSymKey(params)
 
 	// initialize the symmetric cipher
-	symPasta := pasta.NewPasta(symKey, params)
+	symPasta := pasta2.NewPasta(symKey, params)
 	symEnc := symPasta.NewEncryptor()
 
 	// This will be equal to number of blocks and maxSlot in the HE case

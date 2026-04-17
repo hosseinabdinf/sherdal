@@ -2,19 +2,19 @@ package rubato
 
 import (
 	"image"
-	"sherdal/hhe/sym/rubato"
+	rubato2 "sherdal/ske/rubato"
 	"sherdal/utils"
 )
 
 // ImgEncApp Image Encryption Application using Rubato symmetric cipher
-func ImgEncApp(params rubato.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
+func ImgEncApp(params rubato2.Parameter, imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	logger := utils.NewLogger(utils.DEBUG)
 
 	// generate symmetric key
-	symKey := rubato.GenerateSymKey(params)
+	symKey := rubato2.GenerateSymKey(params)
 
 	// initialize the symmetric cipher
-	symRubato := rubato.NewRubato(symKey, params)
+	symRubato := rubato2.NewRubato(symKey, params)
 	symEnc := symRubato.NewEncryptor()
 
 	// This will be equal to number of blocks and maxSlot in the HE case

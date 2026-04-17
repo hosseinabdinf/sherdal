@@ -5,8 +5,8 @@ package main
 import (
 	"crypto/rand"
 	"reflect"
-	"sherdal/hhe/sym"
-	"sherdal/hhe/sym/pasta"
+	"sherdal/ske"
+	pasta2 "sherdal/ske/pasta"
 	"sherdal/utils"
 )
 
@@ -15,19 +15,19 @@ func main() {
 	logger.PrintHeader("Simple Symmetric Encryption Application")
 
 	// select the symmetric parameter set
-	symParams := pasta.Pasta3Param1614
+	symParams := pasta2.Pasta3Param1614
 	numBlocks := 100
 	maxSlot := symParams.GetBlockSize() * numBlocks
 
 	// generate symmetric key
-	symKey := pasta.GenerateSymKey(symParams)
+	symKey := pasta2.GenerateSymKey(symParams)
 
 	// initialize the symmetric cipher
-	symPasta := pasta.NewPasta(symKey, symParams)
+	symPasta := pasta2.NewPasta(symKey, symParams)
 	symEnc := symPasta.NewEncryptor()
 
 	// generate a vector of random numbers
-	plaintext := make(sym.Plaintext, maxSlot)
+	plaintext := make(ske.Plaintext, maxSlot)
 	for i := 0; i < maxSlot; i++ {
 		plaintext[i] = utils.SampleZqx(rand.Reader, symParams.GetModulus())
 	}

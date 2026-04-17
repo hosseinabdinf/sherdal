@@ -1,7 +1,7 @@
 package pasta
 
 import (
-	"sherdal/hhe/sym/pasta"
+	"sherdal/ske/pasta"
 	"sherdal/utils"
 	"testing"
 )

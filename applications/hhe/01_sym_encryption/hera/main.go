@@ -5,8 +5,8 @@ package main
 import (
 	"crypto/rand"
 	"reflect"
-	"sherdal/hhe/sym"
-	"sherdal/hhe/sym/hera"
+	"sherdal/ske"
+	hera2 "sherdal/ske/hera"
 	"sherdal/utils"
 )
 
@@ -15,19 +15,19 @@ func main() {
 	logger.PrintHeader("Hera Simple Symmetric Encryption Application")
 
 	// select the symmetric parameter set
-	symParams := hera.Hera4Params2816
+	symParams := hera2.Hera4Params2816
 	numBlocks := 100
 	maxSlot := symParams.GetBlockSize() * numBlocks
 
 	// generate symmetric key
-	symKey := hera.GenerateSymKey(symParams)
+	symKey := hera2.GenerateSymKey(symParams)
 
 	// initialize the symmetric cipher
-	symHera := hera.NewHera(symKey, symParams)
+	symHera := hera2.NewHera(symKey, symParams)
 	symEnc := symHera.NewEncryptor()
 
 	// generate a vector of random numbers
-	plaintext := make(sym.Plaintext, maxSlot)
+	plaintext := make(ske.Plaintext, maxSlot)
 	for i := 0; i < maxSlot; i++ {
 		plaintext[i] = utils.SampleZqx(rand.Reader, symParams.GetModulus())
 	}

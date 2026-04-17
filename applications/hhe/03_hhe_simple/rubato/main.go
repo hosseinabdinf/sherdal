@@ -2,33 +2,33 @@ package main
 
 import (
 	"fmt"
-	"sherdal/hhe/he/ckks_fv"
-	"sherdal/hhe/he/rubato"
-	symRub "sherdal/hhe/sym/rubato"
+	"sherdal/hhe/_old/rubato"
+	"sherdal/internal/old_fv"
+	rubato2 "sherdal/ske/rubato"
 )
 
 func main() {
-	var kgen ckks_fv.KeyGenerator
-	var fvEncoder ckks_fv.MFVEncoder
-	var sk *ckks_fv.SecretKey
-	var pk *ckks_fv.PublicKey
-	var fvEncryptor ckks_fv.MFVEncryptor
-	var fvDecryptor ckks_fv.MFVDecryptor
-	var fvEvaluator ckks_fv.MFVEvaluator
-	var fvNoiseEstimator ckks_fv.MFVNoiseEstimator
+	var kgen old_fv.KeyGenerator
+	var fvEncoder old_fv.MFVEncoder
+	var sk *old_fv.SecretKey
+	var pk *old_fv.PublicKey
+	var fvEncryptor old_fv.MFVEncryptor
+	var fvDecryptor old_fv.MFVDecryptor
+	var fvEvaluator old_fv.MFVEvaluator
+	var fvNoiseEstimator old_fv.MFVNoiseEstimator
 	var mfvRubato rubato.MFVRubato
 
 	var nonces [][]byte
 	var key []uint64
 	var keystream [][]uint64
-	var keystreamCt []*ckks_fv.Ciphertext
+	var keystreamCt []*old_fv.Ciphertext
 
 	blocksize := rubato.RubatoParams[rubato.RUBATO128L].Blocksize
 	//numRound := rubato.RubatoParams[rubato.RUBATO128L].NumRound
 	plainModulus := rubato.RubatoParams[rubato.RUBATO128L].PlainModulus
 	//sigma := rubato.RubatoParams[rubato.RUBATO128L].Sigma
 
-	hbtpParams := ckks_fv.RtFRubatoParams[0]
+	hbtpParams := old_fv.RtFRubatoParams[0]
 	params, err := hbtpParams.Params()
 	if err != nil {
 		panic(err)
@@ -39,17 +39,17 @@ func main() {
 
 	// Scheme context and keys
 	fmt.Println("Key generation...")
-	kgen = ckks_fv.NewKeyGenerator(params)
+	kgen = old_fv.NewKeyGenerator(params)
 
 	sk, pk = kgen.GenKeyPairSparse(192)
 
-	fvEncoder = ckks_fv.NewMFVEncoder(params)
-	fvEncryptor = ckks_fv.NewMFVEncryptorFromPk(params, pk)
-	fvDecryptor = ckks_fv.NewMFVDecryptor(params, sk)
-	fvNoiseEstimator = ckks_fv.NewMFVNoiseEstimator(params, sk)
+	fvEncoder = old_fv.NewMFVEncoder(params)
+	fvEncryptor = old_fv.NewMFVEncryptorFromPk(params, pk)
+	fvDecryptor = old_fv.NewMFVDecryptor(params, sk)
+	fvNoiseEstimator = old_fv.NewMFVNoiseEstimator(params, sk)
 
 	rlk := kgen.GenRelinearizationKey(sk)
-	fvEvaluator = ckks_fv.NewMFVEvaluator(params, ckks_fv.EvaluationKey{Rlk: rlk}, nil)
+	fvEvaluator = old_fv.NewMFVEvaluator(params, old_fv.EvaluationKey{Rlk: rlk}, nil)
 
 	// Generating data set
 	key = make([]uint64, blocksize)
@@ -71,8 +71,8 @@ func main() {
 	fmt.Println("Computing plain keystream...")
 	keystream = make([][]uint64, params.FVSlots())
 
-	symParams := symRub.Rubato2Param2516
-	symRubato := symRub.NewRubato(key, symParams)
+	symParams := rubato2.Rubato2Param2516
+	symRubato := rubato2.NewRubato(key, symParams)
 	for i := 0; i < params.FVSlots(); i++ {
 		//keystream[i] = plainRubato(blocksize, numRound, nonces[i], counter, key, plainModulus, sigma)
 		keystream[i] = symRubato.KeyStream(nonces[i], counter)
@@ -91,7 +91,7 @@ func main() {
 	// Decrypt and decode the Rubato keystream
 	for i := 0; i < blocksize-4; i++ {
 		val := fvEncoder.DecodeUintSmallNew(fvDecryptor.DecryptNew(keystreamCt[i]))
-		resString := fmt.Sprintf("keystream[%d]: he(%d), plain(%d)", i, val[0], keystream[0][i])
+		resString := fmt.Sprintf("keystream[%d]: internal(%d), plain(%d)", i, val[0], keystream[0][i])
 		fmt.Println(resString)
 	}
 }

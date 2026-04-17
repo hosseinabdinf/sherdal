@@ -2,13 +2,14 @@ package applications
 
 import (
 	"fmt"
-	"github.com/anthonynsimon/bild/imgio"
 	"image"
 	"path/filepath"
 	"sherdal/applications"
-	"sherdal/configs"
+	"sherdal/applications/configs"
 	"sherdal/utils"
 	"testing"
+
+	"github.com/anthonynsimon/bild/imgio"
 )
 
 func TestBWFilterVanilla(t *testing.T) {

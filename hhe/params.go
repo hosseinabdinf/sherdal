@@ -1,8 +1,8 @@
 package hhe
 
 import (
-	he "sherdal/hhe/he/pasta"
-	sym "sherdal/hhe/sym/pasta"
+	he "sherdal/hhe/_old/pasta"
+	sym "sherdal/ske/pasta"
 )
 
 type HHEParams struct {

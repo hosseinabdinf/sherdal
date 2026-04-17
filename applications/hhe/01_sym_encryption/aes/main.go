@@ -3,10 +3,9 @@ package main
 import (
 	// "fmt"
 	"log"
-
-	"sherdal/hhe/he/aes"
-	"sherdal/hhe/he/aes/bootstrapping"
-	sym_aes "sherdal/hhe/sym/aes"
+	"sherdal/hhe/aes"
+	bootstrapping2 "sherdal/hhe/aes/aes_bootstrapping"
+	aes2 "sherdal/ske/aes"
 
 	// "sherdal/utils" // Removed unused import
 
@@ -20,14 +19,14 @@ func main() {
 	// ------------------------------------
 
 	// 1. Generate a symmetric AES key
-	symmetricKey := sym_aes.GenerateSymKey(sym_aes.GetDefaultParams())
+	symmetricKey := aes2.GenerateSymKey(aes2.GetDefaultParams())
 
 	// 2. Encrypt plaintext using AES_CTR
 	plaintext := []byte("This is a secret message that will be encrypted using AES and then decrypted using Homomorphic Encryption!")
 	log.Printf("Original plaintext: %s\n", string(plaintext))
 
 	// Create the AES CTR instance for symmetric encryption
-	symAESCtr, err := sym_aes.NewAESCtr(symmetricKey, sym_aes.GetDefaultParams())
+	symAESCtr, err := aes2.NewAESCtr(symmetricKey, aes2.GetDefaultParams())
 	if err != nil {
 		log.Fatalf("Error creating symmetric AES CTR: %v", err)
 	}
@@ -41,14 +40,14 @@ func main() {
 
 	// 3. Encrypt the symmetric key using Homomorphic Encryption
 	// Using default parameters for HE
-	btpLit := bootstrapping.DefaultParametersSparse[0]
+	btpLit := bootstrapping2.DefaultParametersSparse[0]
 	params, err := ckks.NewParametersFromLiteral(btpLit.SchemeParams)
 	if err != nil {
 		log.Fatalf("Error creating CKKS parameters: %v", err)
 	}
-	btpParams, err := bootstrapping.NewParametersFromLiteral(params, btpLit.BootstrappingParams)
+	btpParams, err := bootstrapping2.NewParametersFromLiteral(params, btpLit.BootstrappingParams)
 	if err != nil {
-		log.Fatalf("Error creating bootstrapping parameters: %v", err)
+		log.Fatalf("Error creating aes_bootstrapping parameters: %v", err)
 	}
 
 	kgen := rlwe.NewKeyGenerator(params)
@@ -89,7 +88,7 @@ func main() {
 	// 2. Perform transciphering to convert symmetrically encrypted blocks to HE ciphertexts
 	decryptor := rlwe.NewDecryptor(params, sk)
 
-	// Convert sym.Key to []uint8 for aes.NewAESCtr
+	// Convert ske.Key to []uint8 for aes.NewAESCtr
 	symmetricKeyUint8 := make([]uint8, len(symmetricKey))
 	for i, val := range symmetricKey {
 		symmetricKeyUint8[i] = uint8(val)

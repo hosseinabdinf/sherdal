@@ -1,9 +1,10 @@
 package applications
 
 import (
+	"sherdal/applications/configs"
+
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
-	"sherdal/configs"
 )
 
 type TestCase int

@@ -1,0 +1,258 @@
+package hera
+
+import (
+	"crypto/rand"
+	"math"
+	ckks_fv2 "sherdal/internal/old_fv"
+	hera2 "sherdal/ske/hera"
+	"sherdal/utils"
+)
+
+type HEHera struct {
+	logger           utils.Logger
+	paramIndex       int
+	fullCoefficients bool
+	params           *ckks_fv2.Parameters
+	symParams        hera2.Parameter
+	hbtp             *ckks_fv2.HalfBootstrapper
+	hbtpParams       *ckks_fv2.HalfBootParameters
+	keyGenerator     ckks_fv2.KeyGenerator
+	fvEncoder        ckks_fv2.MFVEncoder
+	ckksEncoder      ckks_fv2.CKKSEncoder
+	ckksDecryptor    ckks_fv2.CKKSDecryptor
+	sk               *ckks_fv2.SecretKey
+	pk               *ckks_fv2.PublicKey
+	fvEncryptor      ckks_fv2.MFVEncryptor
+	fvEvaluator      ckks_fv2.MFVEvaluator
+	plainCKKSRingTs  []*ckks_fv2.PlaintextRingT
+	plaintexts       []*ckks_fv2.Plaintext
+
+	fvHera         MFVHera
+	messageScaling float64
+	heraModDown    []int
+	stcModDown     []int
+	pDcds          [][]*ckks_fv2.PtDiagMatrixT
+	rotkeys        *ckks_fv2.RotationKeySet
+	rlk            *ckks_fv2.RelinearizationKey
+	hbtpKey        ckks_fv2.BootstrappingKey
+
+	N            int
+	outSize      int
+	coefficients [][]float64
+	symKeyCt     []*ckks_fv2.Ciphertext
+	ciphertext   *ckks_fv2.Ciphertext
+}
+
+func NewHEHera() *HEHera {
+	hera := &HEHera{
+		logger:           utils.NewLogger(utils.DEBUG),
+		paramIndex:       0,
+		fullCoefficients: true,
+		params:           nil,
+		symParams:        hera2.Parameter{},
+		hbtp:             nil,
+		hbtpParams:       nil,
+		keyGenerator:     nil,
+		fvEncoder:        nil,
+		ckksEncoder:      nil,
+		ckksDecryptor:    nil,
+		sk:               nil,
+		pk:               nil,
+		fvEncryptor:      nil,
+		fvEvaluator:      nil,
+		plainCKKSRingTs:  nil,
+		plaintexts:       nil,
+		fvHera:           nil,
+		messageScaling:   0,
+		heraModDown:      nil,
+		stcModDown:       nil,
+		pDcds:            nil,
+		rotkeys:          nil,
+		rlk:              nil,
+		hbtpKey:          ckks_fv2.BootstrappingKey{},
+		N:                0,
+		outSize:          0,
+		coefficients:     nil,
+		symKeyCt:         nil,
+		ciphertext:       nil,
+	}
+	return hera
+}
+
+func (hH *HEHera) InitParams(paramIndex int, symParams hera2.Parameter) {
+	var err error
+	hH.paramIndex = paramIndex
+	hH.symParams = symParams
+	hH.outSize = symParams.BlockSize
+	hH.hbtpParams = ckks_fv2.RtFHeraParams[paramIndex] // set to 2, using Hera 128af
+	hH.params, err = hH.hbtpParams.Params()
+	if err != nil {
+		panic(err)
+	}
+	//hH.N = int(math.Ceil(float64(plainSize / hH.outSize)))
+	hH.N = hH.params.N()
+	hH.params.SetPlainModulus(symParams.GetModulus())
+	hH.params.SetLogFVSlots(hH.params.LogN())
+	hH.messageScaling = float64(hH.params.PlainModulus()) / hH.hbtpParams.MessageRatio
+	if symParams.Rounds == 4 {
+		hH.heraModDown = ckks_fv2.HeraModDownParams80[paramIndex].CipherModDown
+		hH.stcModDown = ckks_fv2.HeraModDownParams80[paramIndex].StCModDown
+	} else {
+		hH.heraModDown = ckks_fv2.HeraModDownParams128[paramIndex].CipherModDown
+		hH.stcModDown = ckks_fv2.HeraModDownParams128[paramIndex].StCModDown
+	}
+	// full Coefficients denotes whether full coefficients are used for data encoding
+	switch paramIndex {
+	case hera2.HR128S, hera2.HR128AS:
+		hH.fullCoefficients = false
+	case hera2.HR128F, hera2.HR128AF:
+		hH.fullCoefficients = true
+	}
+	if hH.fullCoefficients {
+		hH.params.SetLogFVSlots(hH.params.LogN())
+	} else {
+		hH.params.SetLogFVSlots(hH.params.LogSlots())
+	}
+}
+
+func (hH *HEHera) HEKeyGen() {
+	hH.keyGenerator = ckks_fv2.NewKeyGenerator(hH.params)
+	hH.sk, hH.pk = hH.keyGenerator.GenKeyPairSparse(hH.hbtpParams.H)
+
+	hH.fvEncoder = ckks_fv2.NewMFVEncoder(hH.params)
+	hH.ckksEncoder = ckks_fv2.NewCKKSEncoder(hH.params)
+	hH.fvEncryptor = ckks_fv2.NewMFVEncryptorFromPk(hH.params, hH.pk)
+	hH.ckksDecryptor = ckks_fv2.NewCKKSDecryptor(hH.params, hH.sk)
+}
+
+func (hH *HEHera) HalfBootKeyGen(radix int) {
+	// Generating half-aes_bootstrapping keys
+	rotationsHalfBoot := hH.keyGenerator.GenRotationIndexesForHalfBoot(hH.params.LogSlots(), hH.hbtpParams)
+	hH.pDcds = hH.fvEncoder.GenSlotToCoeffMatFV(radix)
+	rotationsStC := hH.keyGenerator.GenRotationIndexesForSlotsToCoeffsMat(hH.pDcds)
+	rotations := append(rotationsHalfBoot, rotationsStC...)
+	if !hH.fullCoefficients {
+		rotations = append(rotations, hH.params.Slots()/2)
+	}
+	hH.rotkeys = hH.keyGenerator.GenRotationKeysForRotations(rotations, true, hH.sk)
+	hH.rlk = hH.keyGenerator.GenRelinearizationKey(hH.sk)
+	hH.hbtpKey = ckks_fv2.BootstrappingKey{Rlk: hH.rlk, Rtks: hH.rotkeys}
+}
+
+func (hH *HEHera) InitHalfBootstrapper() {
+	var err error
+	if hH.hbtp, err = ckks_fv2.NewHalfBootstrapper(hH.params, hH.hbtpParams, hH.hbtpKey); err != nil {
+		panic(err)
+	}
+}
+
+func (hH *HEHera) InitEvaluator() {
+	hH.fvEvaluator = ckks_fv2.NewMFVEvaluator(hH.params, ckks_fv2.EvaluationKey{Rlk: hH.rlk, Rtks: hH.rotkeys}, hH.pDcds)
+}
+
+func (hH *HEHera) InitCoefficients() {
+	hH.coefficients = make([][]float64, hH.outSize)
+	for s := 0; s < hH.outSize; s++ {
+		hH.coefficients[s] = make([]float64, hH.params.N())
+	}
+}
+
+func (hH *HEHera) RandomDataGen(cols int) (data [][]float64) {
+	data = make([][]float64, hH.outSize)
+	for i := 0; i < hH.outSize; i++ {
+		data[i] = make([]float64, cols)
+		for j := 0; j < cols; j++ {
+			data[i][j] = utils.RandFloat64(-1, 1)
+		}
+	}
+	return
+}
+
+func (hH *HEHera) NonceGen(size int) (nonces [][]byte) {
+	nonces = make([][]byte, size)
+	for i := 0; i < size; i++ {
+		nonces[i] = make([]byte, 64)
+		rand.Read(nonces[i])
+	}
+	return
+}
+
+func (hH *HEHera) DataToCoefficients(data [][]float64, size int) {
+	for s := 0; s < hH.outSize; s++ {
+		for i := 0; i < size/2; i++ {
+			j := utils.BitReverse64(uint64(i), uint64(hH.params.LogN()-1))
+			hH.coefficients[s][j] = data[s][i]
+			hH.coefficients[s][j+uint64(size/2)] = data[s][i+size/2]
+		}
+	}
+}
+
+func (hH *HEHera) EncodeEncrypt(keystream [][]uint64, size int) {
+	hH.plainCKKSRingTs = make([]*ckks_fv2.PlaintextRingT, hH.outSize)
+	for s := 0; s < hH.outSize; s++ {
+		hH.plainCKKSRingTs[s] = hH.ckksEncoder.EncodeCoeffsRingTNew(hH.coefficients[s], hH.messageScaling)
+		poly := hH.plainCKKSRingTs[s].Value()[0]
+		for i := 0; i < size; i++ {
+			j := utils.BitReverse64(uint64(i), uint64(hH.params.LogN()))
+			poly.Coeffs[0][j] = (poly.Coeffs[0][j] + keystream[i][s]) % hH.params.PlainModulus()
+		}
+	}
+}
+
+func (hH *HEHera) ScaleUp() {
+	hH.plaintexts = make([]*ckks_fv2.Plaintext, hH.outSize)
+	for s := 0; s < hH.outSize; s++ {
+		hH.plaintexts[s] = ckks_fv2.NewPlaintextFVLvl(hH.params, 0)
+		hH.fvEncoder.FVScaleUp(hH.plainCKKSRingTs[s], hH.plaintexts[s])
+	}
+}
+
+func (hH *HEHera) InitFvHera() MFVHera {
+	hH.fvHera = NewMFVHera(hH.symParams.Rounds, hH.params, hH.fvEncoder, hH.fvEncryptor,
+		hH.fvEvaluator, hH.heraModDown[0])
+	return hH.fvHera
+}
+
+func (hH *HEHera) EncryptSymKey(key []uint64) {
+	hH.symKeyCt = hH.fvHera.EncKey(key)
+	hH.logger.PrintMessages(">> Symmetric Key Length: ", len(hH.symKeyCt))
+}
+
+func (hH *HEHera) GetFvKeyStreams(nonces [][]byte) []*ckks_fv2.Ciphertext {
+	fvKeyStreams := hH.fvHera.Crypt(nonces, hH.symKeyCt, hH.heraModDown)
+	for i := 0; i < hH.outSize; i++ {
+		hH.logger.PrintMessages(">> index: ", i)
+		fvKeyStreams[i] = hH.fvEvaluator.SlotsToCoeffs(fvKeyStreams[i], hH.stcModDown)
+		hH.fvEvaluator.ModSwitchMany(fvKeyStreams[i], fvKeyStreams[i], fvKeyStreams[i].Level())
+	}
+	return fvKeyStreams
+}
+
+func (hH *HEHera) ScaleCiphertext(fvKeyStreams []*ckks_fv2.Ciphertext) {
+	// Encrypt and mod switch to the lowest leve
+	hH.ciphertext = ckks_fv2.NewCiphertextFVLvl(hH.params, 1, 0)
+	hH.ciphertext.Value()[0] = hH.plaintexts[0].Value()[0].CopyNew()
+	hH.fvEvaluator.Sub(hH.ciphertext, fvKeyStreams[0], hH.ciphertext)
+	hH.fvEvaluator.TransformToNTT(hH.ciphertext, hH.ciphertext)
+	hH.ciphertext.SetScale(
+		math.Exp2(
+			math.Round(
+				math.Log2(
+					float64(hH.params.Qi()[0]) /
+						float64(hH.params.PlainModulus()) *
+						hH.messageScaling,
+				),
+			),
+		),
+	)
+}
+
+func (hH *HEHera) HalfBoot() *ckks_fv2.Ciphertext {
+	var ctBoot *ckks_fv2.Ciphertext
+	if hH.fullCoefficients {
+		ctBoot, _ = hH.hbtp.HalfBoot(hH.ciphertext, false)
+	} else {
+		ctBoot, _ = hH.hbtp.HalfBoot(hH.ciphertext, true)
+	}
+	return ctBoot
+}

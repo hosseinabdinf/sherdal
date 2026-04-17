@@ -1,7 +1,7 @@
 package hera
 
 import (
-	"sherdal/hhe/sym/hera"
+	"sherdal/ske/hera"
 	"sherdal/utils"
 	"testing"
 )

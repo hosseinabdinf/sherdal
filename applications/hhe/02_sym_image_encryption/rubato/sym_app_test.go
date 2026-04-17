@@ -1,7 +1,7 @@
 package rubato
 
 import (
-	"sherdal/hhe/sym/rubato"
+	"sherdal/ske/rubato"
 	"sherdal/utils"
 	"testing"
 )

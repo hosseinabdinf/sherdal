@@ -1,13 +1,14 @@
 package utils
 
 import (
-	"github.com/anthonynsimon/bild/imgio"
 	"image"
 	"image/color"
 	"path/filepath"
 	"sherdal/applications"
-	"sherdal/configs"
+	"sherdal/applications/configs"
 	"testing"
+
+	"github.com/anthonynsimon/bild/imgio"
 )
 
 func TestImage(t *testing.T) {

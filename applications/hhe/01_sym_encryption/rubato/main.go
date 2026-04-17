@@ -4,8 +4,8 @@ package main
 
 import (
 	"crypto/rand"
-	"sherdal/hhe/sym"
-	"sherdal/hhe/sym/rubato"
+	"sherdal/ske"
+	rubato2 "sherdal/ske/rubato"
 	"sherdal/utils"
 )
 
@@ -14,19 +14,19 @@ func main() {
 	logger.PrintHeader("Simple Symmetric Encryption Application")
 
 	// select the symmetric parameter set
-	symParams := rubato.Rubato5Param2616
+	symParams := rubato2.Rubato5Param2616
 	numBlocks := 100
 	maxSlot := symParams.GetBlockSize() * numBlocks
 
 	// generate symmetric key
-	symKey := rubato.GenerateSymKey(symParams)
+	symKey := rubato2.GenerateSymKey(symParams)
 
 	// initialize the symmetric cipher
-	symRubato := rubato.NewRubato(symKey, symParams)
+	symRubato := rubato2.NewRubato(symKey, symParams)
 	symEnc := symRubato.NewEncryptor()
 
 	// generate a vector of random numbers
-	plaintext := make(sym.Plaintext, maxSlot)
+	plaintext := make(ske.Plaintext, maxSlot)
 	for i := 0; i < maxSlot; i++ {
 		plaintext[i] = utils.SampleZqx(rand.Reader, symParams.GetModulus())
 	}
