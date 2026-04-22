@@ -1,8 +1,9 @@
 package hera
 
 import (
-	"sherdal/internal"
-	symhera "sherdal/ske/hera"
+	"github.com/hosseinabdinf/sherdal/internal"
+
+	symhera "github.com/hosseinabdinf/sherdal/ske/hera"
 )
 
 type HeraPreset int
@@ -25,7 +26,7 @@ func DefaultHeraConfig(preset HeraPreset, symParams symhera.Parameter) Config {
 	return Config{Preset: preset, BGVLogN: 15, SymmetricParams: symParams}
 }
 
-func (cfg Config) halfBootSpec() internal.LegacyHalfBootParameters {
+func (cfg Config) HalfBootSpec() internal.LegacyHalfBootParameters {
 	spec := heraHalfBootPresets[cfg.Preset]
 	if cfg.SymmetricParams.Modulus != 0 {
 		spec = spec.WithPlainModulus(cfg.SymmetricParams.Modulus)
@@ -51,9 +52,9 @@ func (cfg Config) fullCoefficients() bool {
 
 func (cfg Config) logFVSlots() int {
 	if cfg.fullCoefficients() {
-		return cfg.halfBootSpec().LogN
+		return cfg.HalfBootSpec().LogN
 	}
-	return cfg.halfBootSpec().LogSlots
+	return cfg.HalfBootSpec().LogSlots
 }
 
 var heraModDown80 = []internal.ModDownPlan{

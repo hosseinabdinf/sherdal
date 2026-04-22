@@ -3,7 +3,8 @@ package ring
 import (
 	"encoding/binary"
 	"math"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )

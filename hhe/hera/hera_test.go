@@ -1,9 +1,11 @@
 package hera
 
 import (
-	"sherdal/internal"
-	symhera "sherdal/ske/hera"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/internal"
+
+	symhera "github.com/hosseinabdinf/sherdal/ske/hera"
 
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +29,7 @@ func TestHeraEvalKeystreamSmoke(t *testing.T) {
 }
 
 func TestHeraHalfBootSpecBuildsParameters(t *testing.T) {
-	spec := DefaultHeraConfig(Hera128AF, symhera.Hera4Params2516).halfBootSpec()
+	spec := DefaultHeraConfig(Hera128AF, symhera.Hera4Params2516).HalfBootSpec()
 	_, err := spec.ResidualParameters()
 	require.NoError(t, err)
 	require.Equal(t, spec.LogSlots, *spec.BootstrappingLiteral().LogSlots)

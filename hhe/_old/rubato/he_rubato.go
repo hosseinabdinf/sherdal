@@ -3,9 +3,11 @@ package rubato
 import (
 	"crypto/rand"
 	"math"
-	ckks_fv2 "sherdal/internal/old_fv"
-	"sherdal/ske/rubato"
-	"sherdal/utils"
+
+	ckks_fv2 "github.com/hosseinabdinf/sherdal/internal/old_fv"
+
+	"github.com/hosseinabdinf/sherdal/ske/rubato"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 type HERubato struct {

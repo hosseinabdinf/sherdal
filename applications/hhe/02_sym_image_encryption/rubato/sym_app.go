@@ -2,8 +2,9 @@ package rubato
 
 import (
 	"image"
-	rubato2 "sherdal/ske/rubato"
-	"sherdal/utils"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // ImgEncApp Image Encryption Application using Rubato symmetric cipher

@@ -1,9 +1,10 @@
 package rubato
 
 import (
-	"sherdal/ske"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func BenchmarkRubato(b *testing.B) {

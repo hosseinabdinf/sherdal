@@ -2,9 +2,10 @@ package internal
 
 import (
 	"fmt"
-	symhera "sherdal/ske/hera"
 
-	"sherdal/utils"
+	symhera "github.com/hosseinabdinf/sherdal/ske/hera"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"golang.org/x/crypto/sha3"

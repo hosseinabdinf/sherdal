@@ -3,9 +3,11 @@ package hera
 import (
 	"crypto/rand"
 	"math"
-	oldfv "sherdal/internal/old_fv"
-	hera2 "sherdal/ske/hera"
-	"sherdal/utils"
+
+	hera2 "github.com/hosseinabdinf/sherdal/ske/hera"
+
+	oldfv "github.com/hosseinabdinf/sherdal/internal/old_fv"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 type HEHera struct {

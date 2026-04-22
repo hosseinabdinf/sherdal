@@ -2,7 +2,8 @@ package aes
 
 import (
 	"fmt"
-	"sherdal/ske"
+
+	"github.com/hosseinabdinf/sherdal/ske"
 )
 
 type Parameter interface {

@@ -4,9 +4,11 @@ import (
 	"encoding/binary"
 	"math"
 	"math/big"
-	"sherdal/ske"
-	"sherdal/ske/pasta"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/ske/pasta"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"

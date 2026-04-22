@@ -2,9 +2,11 @@ package rubato
 
 import (
 	"image"
-	"sherdal/hhe/rubato"
-	rubato2 "sherdal/ske/rubato"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/hhe/rubato"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func HHEImgEncApp(imgBounds image.Rectangle, img utils.ImageUint64Vec) {

@@ -2,9 +2,10 @@ package hera
 
 import (
 	"crypto/rand"
-	"sherdal/ske"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func BenchmarkHera(b *testing.B) {

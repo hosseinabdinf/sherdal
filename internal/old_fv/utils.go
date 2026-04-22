@@ -5,8 +5,9 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
-	"sherdal/internal/old_fv/ring"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	ltgo "github.com/tuneinsight/lattigo/v6/ring"
 )

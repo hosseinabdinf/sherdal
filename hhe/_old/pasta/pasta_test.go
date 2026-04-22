@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"reflect"
-	"sherdal/ske"
-	"sherdal/ske/pasta"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/ske/pasta"
 )
 
 func TestPasta3(t *testing.T) {

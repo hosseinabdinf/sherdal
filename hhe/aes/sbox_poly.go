@@ -2,7 +2,8 @@ package aes
 
 import (
 	"errors"
-	"sherdal/internal/aes_bootstrapping"
+
+	"github.com/hosseinabdinf/sherdal/internal/aes_bootstrapping"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )

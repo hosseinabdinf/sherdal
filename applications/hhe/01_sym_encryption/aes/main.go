@@ -2,13 +2,14 @@ package main
 
 import (
 	"log"
-	"sherdal/hhe/aes"
-	aes2 "sherdal/ske/aes"
+
+	"github.com/hosseinabdinf/sherdal/hhe/aes"
+	symAes "github.com/hosseinabdinf/sherdal/ske/aes"
 
 	// "fmt"
-	bootstrapping2 "sherdal/internal/aes_bootstrapping"
+	bootstrapping2 "github.com/hosseinabdinf/sherdal/internal/aes_bootstrapping"
 
-	// "sherdal/utils" // Removed unused import
+	// "github.com/hosseinabdinf/sherdal/utils" // Removed unused import
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
@@ -20,14 +21,14 @@ func main() {
 	// ------------------------------------
 
 	// 1. Generate a symmetric AES key
-	symmetricKey := aes2.GenerateSymKey(aes2.GetDefaultParams())
+	symmetricKey := symAes.GenerateSymKey(symAes.GetDefaultParams())
 
 	// 2. Encrypt plaintext using AES_CTR
 	plaintext := []byte("This is a secret message that will be encrypted using AES and then decrypted using Homomorphic Encryption!")
 	log.Printf("Original plaintext: %s\n", string(plaintext))
 
 	// Create the AES CTR instance for symmetric encryption
-	symAESCtr, err := aes2.NewAESCtr(symmetricKey, aes2.GetDefaultParams())
+	symAESCtr, err := symAes.NewAESCtr(symmetricKey, symAes.GetDefaultParams())
 	if err != nil {
 		log.Fatalf("Error creating symmetric AES CTR: %v", err)
 	}

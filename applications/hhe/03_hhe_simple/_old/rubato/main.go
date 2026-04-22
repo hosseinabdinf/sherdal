@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
-	"sherdal/hhe/_old/rubato"
-	"sherdal/internal/old_fv"
-	rubato2 "sherdal/ske/rubato"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
+
+	"github.com/hosseinabdinf/sherdal/hhe/_old/rubato"
 )
 
 func main() {

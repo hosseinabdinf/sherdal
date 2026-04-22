@@ -1,8 +1,8 @@
 package old_fv
 
 import (
-	"sherdal/internal/old_fv/ring"
-	"sherdal/utils"
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )

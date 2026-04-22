@@ -3,10 +3,12 @@ package pasta
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"sherdal/ske"
-	"sherdal/ske/pasta"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/ske/pasta"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )

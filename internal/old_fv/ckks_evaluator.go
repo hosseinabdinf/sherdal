@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sherdal/internal/old_fv/ring"
-	"sherdal/internal/old_fv/rlwe"
-	"sherdal/utils"
 	"unsafe"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/rlwe"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // CKKSEvaluator is an interface implementing the methodes to conduct homomorphic operations between ciphertext and/or plaintexts.

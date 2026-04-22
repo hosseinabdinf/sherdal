@@ -2,9 +2,10 @@ package internal
 
 import (
 	"fmt"
-	symrubato "sherdal/ske/rubato"
 
-	"sherdal/utils"
+	symrubato "github.com/hosseinabdinf/sherdal/ske/rubato"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"golang.org/x/crypto/sha3"

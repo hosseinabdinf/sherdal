@@ -5,8 +5,9 @@ package old_fv
 import (
 	"math"
 	"math/big"
-	"sherdal/internal/old_fv/ring"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )
@@ -122,7 +123,7 @@ func newCKKSEncoder(params *Parameters) ckksEncoder {
 	for i := 0; i < m>>2; i++ {
 		rotGroup[i] = fivePows
 		fivePows *= GaloisGen
-		fivePows &= (m - 1)
+		fivePows &= m - 1
 	}
 
 	prng, err := sampling.NewPRNG()
@@ -268,7 +269,7 @@ func (encoder *encoderComplex128) GetErrSTDFreqDom(valuesWant, valuesHave []comp
 func (encoder *encoderComplex128) GetErrSTDTimeDom(valuesWant, valuesHave []complex128, scale float64) (std float64) {
 
 	for i := range valuesHave {
-		encoder.values[i] = (valuesWant[i] - valuesHave[i])
+		encoder.values[i] = valuesWant[i] - valuesHave[i]
 	}
 
 	invfft(encoder.values, len(valuesWant), encoder.m, encoder.rotGroup, encoder.roots)
@@ -414,7 +415,7 @@ func bsgsIndex(el interface{}, slots, N1 int) (index map[int][]int, rotations []
 	switch element := el.(type) {
 	case map[int][]complex128:
 		for key := range element {
-			key &= (slots - 1)
+			key &= slots - 1
 			idx1 := key / N1
 			idx2 := key & (N1 - 1)
 			if index[idx1] == nil {
@@ -429,7 +430,7 @@ func bsgsIndex(el interface{}, slots, N1 int) (index map[int][]int, rotations []
 		}
 	case map[int][]uint64:
 		for key := range element {
-			key &= (slots - 1)
+			key &= slots - 1
 			idx1 := key / N1
 			idx2 := key & (N1 - 1)
 			if index[idx1] == nil {
@@ -444,7 +445,7 @@ func bsgsIndex(el interface{}, slots, N1 int) (index map[int][]int, rotations []
 		}
 	case map[int]bool:
 		for key := range element {
-			key &= (slots - 1)
+			key &= slots - 1
 			idx1 := key / N1
 			idx2 := key & (N1 - 1)
 			if index[idx1] == nil {
@@ -458,7 +459,7 @@ func bsgsIndex(el interface{}, slots, N1 int) (index map[int][]int, rotations []
 		}
 	case map[int][2]*ring.Poly:
 		for key := range element {
-			key &= (slots - 1)
+			key &= slots - 1
 			idx1 := key / N1
 			idx2 := key & (N1 - 1)
 			if index[idx1] == nil {
@@ -907,7 +908,7 @@ func (encoder *encoderBigComplex) EncodeComplex(plaintext *Plaintext, values []*
 
 	gap := (encoder.ringQ.N >> 1) / slots
 
-	for i, jdx, idx := 0, (encoder.ringQ.N >> 1), 0; i < slots; i, jdx, idx = i+1, jdx+gap, idx+gap {
+	for i, jdx, idx := 0, encoder.ringQ.N>>1, 0; i < slots; i, jdx, idx = i+1, jdx+gap, idx+gap {
 		encoder.valuesfloat[idx].Set(encoder.values[i].Real())
 		encoder.valuesfloat[jdx].Set(encoder.values[i].Imag())
 	}

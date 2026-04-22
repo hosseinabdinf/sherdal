@@ -3,8 +3,9 @@ package old_fv
 import (
 	"fmt"
 	"math"
-	"sherdal/internal/old_fv/bettersine"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/bettersine"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // HalfBootstrapper is a struct to stores a memory pool the plaintext matrices

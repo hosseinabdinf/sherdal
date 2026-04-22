@@ -1,7 +1,7 @@
 package linear_regression
 
 import (
-	"sherdal/applications/configs"
+	"github.com/hosseinabdinf/sherdal/applications/configs"
 
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 	"github.com/tuneinsight/lattigo/v6/schemes/ckks"

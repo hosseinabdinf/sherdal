@@ -3,8 +3,9 @@ package rubato
 import (
 	"crypto/rand"
 	"fmt"
-	sym "sherdal/ske"
-	mUtils "sherdal/utils"
+
+	sym "github.com/hosseinabdinf/sherdal/ske"
+	mUtils "github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/ring"
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"

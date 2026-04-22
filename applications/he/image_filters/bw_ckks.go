@@ -2,9 +2,9 @@ package applications
 
 import (
 	"fmt"
-	"sherdal/utils"
 	"strconv"
 
+	"github.com/hosseinabdinf/sherdal/utils"
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"github.com/tuneinsight/lattigo/v6/schemes/ckks"
 )

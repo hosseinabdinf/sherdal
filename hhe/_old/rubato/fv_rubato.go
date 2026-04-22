@@ -2,8 +2,10 @@ package rubato
 
 import (
 	"fmt"
-	"sherdal/internal/old_fv"
-	"sherdal/internal/old_fv/ring"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv"
 
 	"golang.org/x/crypto/sha3"
 )

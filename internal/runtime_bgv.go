@@ -2,7 +2,8 @@ package internal
 
 import (
 	"fmt"
-	"sherdal/applications/configs"
+
+	"github.com/hosseinabdinf/sherdal/applications/configs"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"

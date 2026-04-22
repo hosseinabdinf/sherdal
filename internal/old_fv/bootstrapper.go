@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math"
 	"math/cmplx"
-	"sherdal/internal/old_fv/bettersine"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/bettersine"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // Bootstrapper is a struct to stores a memory pool the plaintext matrices

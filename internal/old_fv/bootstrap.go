@@ -2,7 +2,8 @@ package old_fv
 
 import (
 	"math"
-	"sherdal/internal/old_fv/ring"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
 )
 
 // Bootstrapp re-encrypt a ciphertext at lvl Q0 to a ciphertext at MaxLevel-k where k is the depth of the aes_bootstrapping circuit.

@@ -3,7 +3,8 @@ package old_fv
 import (
 	"math"
 	"math/big"
-	"sherdal/internal/old_fv/ring"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
 )
 
 type MFVNoiseEstimator interface {

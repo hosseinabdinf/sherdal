@@ -6,8 +6,9 @@ import (
 	"math"
 	"math/big"
 	"math/bits"
-	"sherdal/internal/old_fv/ring"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // MaxLogN is the log2 of the largest supported polynomial modulus degree.

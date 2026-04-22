@@ -1,8 +1,8 @@
 package old_fv
 
 import (
-	"sherdal/internal/old_fv/ring"
-	"sherdal/utils"
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // RotateHoisted takes an input Ciphertext and a list of rotations and returns a map of Ciphertext, where each element of the map is the input Ciphertext

@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"image"
 	"path/filepath"
-	"sherdal/applications"
-	"sherdal/applications/configs"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/applications"
+	"github.com/hosseinabdinf/sherdal/applications/configs"
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/anthonynsimon/bild/imgio"
 )

@@ -2,9 +2,11 @@ package rubato
 
 import (
 	"fmt"
-	"sherdal/internal"
-	"sherdal/ske"
-	symrubato "sherdal/ske/rubato"
+
+	"github.com/hosseinabdinf/sherdal/internal"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	symrubato "github.com/hosseinabdinf/sherdal/ske/rubato"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )

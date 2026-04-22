@@ -3,7 +3,8 @@ package internal
 import (
 	"encoding/binary"
 	"fmt"
-	"sherdal/ske"
+
+	"github.com/hosseinabdinf/sherdal/ske"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )

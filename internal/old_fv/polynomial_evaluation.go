@@ -64,7 +64,7 @@ func (eval *ckksEvaluator) EvaluatePoly(ct0 *Ciphertext, pol *Poly, targetScale 
 	C[1] = ct0.CopyNew().Ciphertext()
 
 	logDegree := bits.Len64(uint64(pol.Degree()))
-	logSplit := (logDegree >> 1) //optimalSplit(logDegree) //
+	logSplit := logDegree >> 1 //optimalSplit(logDegree) //
 
 	for i := 2; i < (1 << logSplit); i++ {
 		if err = computePowerBasis(i, C, eval); err != nil {
@@ -100,7 +100,7 @@ func (eval *ckksEvaluator) EvaluateCheby(op *Ciphertext, cheby *ChebyshevInterpo
 	C[1] = op.CopyNew().Ciphertext()
 
 	logDegree := int(bits.Len64(uint64(cheby.Degree())))
-	logSplit := (logDegree >> 1) //optimalSplit(logDegree) //
+	logSplit := logDegree >> 1 //optimalSplit(logDegree) //
 
 	for i := 2; i < (1 << logSplit); i++ {
 		if err = computePowerBasisCheby(i, C, eval); err != nil {

@@ -1,12 +1,16 @@
 package internal
 
 import (
-	hera2 "sherdal/hhe/hera"
-	rubato2 "sherdal/hhe/rubato"
-	"sherdal/ske"
-	"sherdal/ske/hera"
-	"sherdal/ske/rubato"
 	"testing"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/hhe/rubato"
+
+	"github.com/hosseinabdinf/sherdal/ske/hera"
+
+	hera2 "github.com/hosseinabdinf/sherdal/hhe/hera"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/ske/rubato"
 
 	"github.com/stretchr/testify/require"
 )

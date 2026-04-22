@@ -4,8 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 

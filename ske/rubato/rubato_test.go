@@ -4,9 +4,10 @@ import (
 	"crypto/rand"
 	"math"
 	"reflect"
-	"sherdal/ske"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func TestRubato(t *testing.T) {

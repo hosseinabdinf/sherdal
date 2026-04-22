@@ -1,9 +1,11 @@
 package rubato
 
 import (
-	"sherdal/internal"
-	"sherdal/ske/rubato"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/internal"
+
+	"github.com/hosseinabdinf/sherdal/ske/rubato"
 
 	"github.com/stretchr/testify/require"
 )

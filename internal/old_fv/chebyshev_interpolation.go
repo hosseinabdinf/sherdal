@@ -78,7 +78,7 @@ func chebyCoeffs(nodes, fi []complex128, a, b complex128) (coeffs []complex128) 
 
 	coeffs[0] /= complex(float64(n), 0)
 	for i := 1; i < n; i++ {
-		coeffs[i] *= (2.0 / complex(float64(n), 0))
+		coeffs[i] *= 2.0 / complex(float64(n), 0)
 	}
 
 	return

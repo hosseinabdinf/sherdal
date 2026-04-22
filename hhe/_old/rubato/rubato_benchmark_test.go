@@ -3,9 +3,11 @@ package rubato
 import (
 	"crypto/rand"
 	"fmt"
-	"sherdal/internal/old_fv"
-	rubato2 "sherdal/ske/rubato"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 )
 
 func BenchmarkRubato(b *testing.B) {

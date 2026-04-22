@@ -1,7 +1,7 @@
 package old_fv
 
 import (
-	"sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
 )
 
 // Plaintext PlaintextCKKS is an Element with only one Poly.

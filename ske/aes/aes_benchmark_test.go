@@ -1,8 +1,9 @@
 package aes
 
 import (
-	"sherdal/ske"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
 )
 
 func BenchmarkAESCtr(b *testing.B) {

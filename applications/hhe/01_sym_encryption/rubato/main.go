@@ -4,9 +4,10 @@ package main
 
 import (
 	"crypto/rand"
-	"sherdal/ske"
-	rubato2 "sherdal/ske/rubato"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func main() {

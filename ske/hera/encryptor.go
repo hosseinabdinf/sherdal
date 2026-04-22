@@ -1,8 +1,8 @@
 package hera
 
 import (
-	sym "sherdal/ske"
-	"sherdal/utils"
+	sym "github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 type Encryptor interface {

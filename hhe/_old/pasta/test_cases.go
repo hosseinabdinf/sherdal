@@ -2,7 +2,8 @@ package pasta
 
 import (
 	"math"
-	symPasta "sherdal/ske/pasta"
+
+	symPasta "github.com/hosseinabdinf/sherdal/ske/pasta"
 )
 
 type TestContext struct {

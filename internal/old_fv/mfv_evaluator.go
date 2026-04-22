@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"sherdal/internal/old_fv/ring"
-	"sherdal/internal/old_fv/rlwe"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/rlwe"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"unsafe"
 )

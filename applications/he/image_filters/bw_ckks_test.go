@@ -2,8 +2,9 @@ package applications
 
 import (
 	"fmt"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func TestBWFilterCKKS(t *testing.T) {

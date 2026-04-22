@@ -3,9 +3,10 @@ package pasta
 import (
 	"crypto/rand"
 	"reflect"
-	"sherdal/ske"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func TestPasta3(t *testing.T) {

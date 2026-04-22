@@ -2,9 +2,11 @@ package hera
 
 import (
 	"fmt"
-	"sherdal/internal"
-	"sherdal/ske"
-	symhera "sherdal/ske/hera"
+
+	"github.com/hosseinabdinf/sherdal/internal"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	symhera "github.com/hosseinabdinf/sherdal/ske/hera"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )
@@ -23,7 +25,7 @@ func NewHera(cfg Config) (*Hera, error) {
 		err error
 	)
 	if cfg.UseResidualBGV {
-		rt, err = internal.NewAlignedBGVRuntime(cfg.halfBootSpec())
+		rt, err = internal.NewAlignedBGVRuntime(cfg.HalfBootSpec())
 	} else {
 		rt, err = internal.NewDefaultBGVRuntime(cfg.BGVLogN, cfg.SymmetricParams.Modulus)
 	}
@@ -79,7 +81,7 @@ func (h *Hera) Runtime() *internal.BGVRuntime {
 }
 
 func (h *Hera) HalfBootSpec() internal.LegacyHalfBootParameters {
-	return h.config.halfBootSpec()
+	return h.config.HalfBootSpec()
 }
 
 func (h *Hera) ModDownPlan() internal.ModDownPlan {

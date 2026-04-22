@@ -1,9 +1,10 @@
 package hera
 
 import (
-	"sherdal/ske/hera"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske/hera"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func TestApp(t *testing.T) {

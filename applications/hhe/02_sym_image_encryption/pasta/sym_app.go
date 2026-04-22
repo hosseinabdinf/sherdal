@@ -3,8 +3,9 @@ package pasta
 import (
 	"image"
 	"reflect"
-	pasta2 "sherdal/ske/pasta"
-	"sherdal/utils"
+
+	pasta2 "github.com/hosseinabdinf/sherdal/ske/pasta"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // ImgEncApp Image Encryption Application using Pasta symmetric cipher

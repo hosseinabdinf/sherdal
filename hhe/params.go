@@ -1,8 +1,9 @@
 package hhe
 
 import (
-	he "sherdal/hhe/_old/pasta"
-	sym "sherdal/ske/pasta"
+	sym "github.com/hosseinabdinf/sherdal/ske/pasta"
+
+	he "github.com/hosseinabdinf/sherdal/hhe/_old/pasta"
 )
 
 type HHEParams struct {

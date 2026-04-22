@@ -4,10 +4,14 @@ package main
 import (
 	"crypto/rand"
 	"encoding/binary"
-	"sherdal/hhe"
-	homPas "sherdal/hhe/_old/pasta"
-	symPas "sherdal/ske/pasta"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/utils"
+
+	symPas "github.com/hosseinabdinf/sherdal/ske/pasta"
+
+	homPas "github.com/hosseinabdinf/sherdal/hhe/_old/pasta"
+
+	"github.com/hosseinabdinf/sherdal/hhe"
 )
 
 func main() {

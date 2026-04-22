@@ -3,8 +3,9 @@ package hera
 import (
 	"image"
 	"reflect"
-	hera2 "sherdal/ske/hera"
-	"sherdal/utils"
+
+	hera2 "github.com/hosseinabdinf/sherdal/ske/hera"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 // ImgEncApp Image Encryption Application using Hera symmetric cipher

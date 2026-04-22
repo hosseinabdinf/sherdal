@@ -5,8 +5,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/big"
-	sym "sherdal/ske"
-	"sherdal/utils"
+
+	sym "github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"golang.org/x/crypto/sha3"
 )

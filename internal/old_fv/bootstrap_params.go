@@ -957,7 +957,7 @@ func genRepackMatrix(logL int, bitreversed bool) (vectors map[int][]complex128) 
 	}
 
 	addToDiagMatrix(vectors, 0, a)
-	addToDiagMatrix(vectors, (1 << logL), b)
+	addToDiagMatrix(vectors, 1<<logL, b)
 
 	return
 }

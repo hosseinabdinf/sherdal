@@ -2,8 +2,9 @@ package utils
 
 import (
 	"encoding/binary"
-	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"math"
+
+	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )
 
 const (

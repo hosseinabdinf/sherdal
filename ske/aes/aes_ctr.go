@@ -5,7 +5,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"sherdal/ske"
+
+	"github.com/hosseinabdinf/sherdal/ske"
 )
 
 type AESCtr interface {

@@ -2,7 +2,8 @@ package rlwe
 
 import (
 	"encoding/binary"
-	"sherdal/internal/old_fv/ring"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
 )
 
 // SecretKey is a type for generic RLWE secret keys.

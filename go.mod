@@ -1,4 +1,4 @@
-module sherdal
+module github.com/hosseinabdinf/sherdal
 
 go 1.26.0
 

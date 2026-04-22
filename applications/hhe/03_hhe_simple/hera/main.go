@@ -2,9 +2,11 @@ package he1hera
 
 import (
 	"fmt"
-	"sherdal/hhe/hera"
-	"sherdal/ske"
-	hera2 "sherdal/ske/hera"
+
+	hera2 "github.com/hosseinabdinf/sherdal/ske/hera"
+
+	"github.com/hosseinabdinf/sherdal/hhe/hera"
+	"github.com/hosseinabdinf/sherdal/ske"
 )
 
 func run() {

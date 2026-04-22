@@ -1,7 +1,7 @@
 package old_fv
 
 import (
-	"sherdal/internal/old_fv/rlwe"
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/rlwe"
 )
 
 // SecretKey is a type for CKKS secret keys.

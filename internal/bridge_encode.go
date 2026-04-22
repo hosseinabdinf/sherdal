@@ -12,7 +12,7 @@ import (
 )
 
 // RtFBridge contains the narrow custom glue between the BGV keystream layer
-// and the CKKS halfbootstrap input representation.
+// and the CKKS half-bootstrap input representation.
 type RtFBridge struct {
 	runtime        *BGVRuntime
 	residual       ckks.Parameters

@@ -1,6 +1,6 @@
 package internal
 
-import "sherdal/utils"
+import "github.com/hosseinabdinf/sherdal/utils"
 
 // PackCoefficientsBitReversed mirrors the _old RtF coefficient placement where
 // the first and second halves are written in bit-reversed order.

@@ -5,9 +5,10 @@ package main
 import (
 	"crypto/rand"
 	"reflect"
-	"sherdal/ske"
-	hera2 "sherdal/ske/hera"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	hera2 "github.com/hosseinabdinf/sherdal/ske/hera"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func main() {

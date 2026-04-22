@@ -4,9 +4,10 @@ import (
 	"image"
 	"image/color"
 	"path/filepath"
-	"sherdal/applications"
-	"sherdal/applications/configs"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/applications"
+	"github.com/hosseinabdinf/sherdal/applications/configs"
 
 	"github.com/anthonynsimon/bild/imgio"
 )

@@ -1,8 +1,9 @@
 package rubato
 
 import (
-	"sherdal/internal"
-	symrubato "sherdal/ske/rubato"
+	"github.com/hosseinabdinf/sherdal/internal"
+
+	symrubato "github.com/hosseinabdinf/sherdal/ske/rubato"
 )
 
 type Preset int

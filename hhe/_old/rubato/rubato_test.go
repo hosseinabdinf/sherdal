@@ -4,9 +4,11 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	ckks_fv2 "sherdal/internal/old_fv"
-	rubato2 "sherdal/ske/rubato"
 	"testing"
+
+	ckksfv2 "github.com/hosseinabdinf/sherdal/internal/old_fv"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 )
 
 func testString(opName string, p rubato2.Parameter) string {
@@ -101,8 +103,8 @@ func testHERubato(t *testing.T, tc rubato2.TestContext) {
 		heRubato.ckksDecryptor, heRubato.ckksEncoder)
 }
 
-func printDebug(params *ckks_fv2.Parameters, ciphertext *ckks_fv2.Ciphertext,
-	valuesWant []complex128, decryptor ckks_fv2.CKKSDecryptor, encoder ckks_fv2.CKKSEncoder) {
+func printDebug(params *ckksfv2.Parameters, ciphertext *ckksfv2.Ciphertext,
+	valuesWant []complex128, decryptor ckksfv2.CKKSDecryptor, encoder ckksfv2.CKKSEncoder) {
 
 	valuesTest := encoder.DecodeComplex(decryptor.DecryptNew(ciphertext), params.LogSlots())
 	logSlots := params.LogSlots()
@@ -113,7 +115,7 @@ func printDebug(params *ckks_fv2.Parameters, ciphertext *ckks_fv2.Ciphertext,
 	fmt.Printf("ValuesTest: %6.10f %6.10f %6.10f %6.10f...\n", valuesTest[0], valuesTest[1], valuesTest[2], valuesTest[3])
 	fmt.Printf("ValuesWant: %6.10f %6.10f %6.10f %6.10f...\n", valuesWant[0], valuesWant[1], valuesWant[2], valuesWant[3])
 
-	precStats := ckks_fv2.GetPrecisionStats(params, encoder, nil, valuesWant, valuesTest, logSlots, sigma)
+	precStats := ckksfv2.GetPrecisionStats(params, encoder, nil, valuesWant, valuesTest, logSlots, sigma)
 
 	fmt.Println(precStats.String())
 }

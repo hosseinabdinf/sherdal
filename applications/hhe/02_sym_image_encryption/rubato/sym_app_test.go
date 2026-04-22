@@ -1,9 +1,10 @@
 package rubato
 
 import (
-	"sherdal/ske/rubato"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske/rubato"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func TestApp(t *testing.T) {

@@ -2,9 +2,10 @@ package pasta
 
 import (
 	"crypto/rand"
-	"sherdal/ske"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func BenchmarkPasta3(b *testing.B) {

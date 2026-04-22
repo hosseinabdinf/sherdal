@@ -2,7 +2,8 @@ package old_fv
 
 import (
 	"math"
-	"sherdal/internal/old_fv/ring"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
 )
 
 // Halfboot follows aes_bootstrapping process except the last StC step.

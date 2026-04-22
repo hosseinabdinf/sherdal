@@ -2,9 +2,11 @@ package rubato
 
 import (
 	"fmt"
-	"sherdal/hhe/rubato"
-	"sherdal/ske"
-	rubato2 "sherdal/ske/rubato"
+
+	"github.com/hosseinabdinf/sherdal/hhe/rubato"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 )
 
 func run() {

@@ -4,12 +4,14 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math"
-	hera2 "sherdal/hhe/_old/hera"
-	rubato2 "sherdal/hhe/_old/rubato"
-	"sherdal/utils"
 	"testing"
 
-	"sherdal/internal/old_fv/ring"
+	hera2 "github.com/hosseinabdinf/sherdal/hhe/_old/hera"
+
+	rubato2 "github.com/hosseinabdinf/sherdal/hhe/_old/rubato"
+	"github.com/hosseinabdinf/sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/internal/old_fv/ring"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 	"golang.org/x/crypto/sha3"

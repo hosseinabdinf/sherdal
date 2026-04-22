@@ -3,7 +3,8 @@ package rubato
 import (
 	"encoding/binary"
 	"math"
-	sym "sherdal/ske"
+
+	sym "github.com/hosseinabdinf/sherdal/ske"
 )
 
 type Encryptor interface {

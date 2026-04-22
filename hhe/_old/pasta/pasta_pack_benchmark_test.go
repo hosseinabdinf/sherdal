@@ -2,9 +2,11 @@ package pasta
 
 import (
 	"encoding/binary"
-	"sherdal/ske"
-	"sherdal/ske/pasta"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
+
+	"github.com/hosseinabdinf/sherdal/ske/pasta"
 
 	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )

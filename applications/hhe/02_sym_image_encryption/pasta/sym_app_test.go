@@ -1,9 +1,10 @@
 package pasta
 
 import (
-	"sherdal/ske/pasta"
-	"sherdal/utils"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske/pasta"
+	"github.com/hosseinabdinf/sherdal/utils"
 )
 
 func TestApp(t *testing.T) {

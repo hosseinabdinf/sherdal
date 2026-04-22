@@ -3,7 +3,8 @@ package ring
 import (
 	"math"
 	"math/bits"
-	"sherdal/utils"
+
+	"github.com/hosseinabdinf/sherdal/utils"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )

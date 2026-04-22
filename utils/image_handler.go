@@ -5,8 +5,9 @@ import (
 	"image/color"
 	"math"
 	"path/filepath"
-	"sherdal/applications"
-	"sherdal/applications/configs"
+
+	"github.com/hosseinabdinf/sherdal/applications"
+	"github.com/hosseinabdinf/sherdal/applications/configs"
 
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"

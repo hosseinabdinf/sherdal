@@ -2,8 +2,9 @@ package aes
 
 import (
 	"bytes"
-	"sherdal/ske"
 	"testing"
+
+	"github.com/hosseinabdinf/sherdal/ske"
 )
 
 func convertSymBlockToBytes(block ske.Block) []byte {

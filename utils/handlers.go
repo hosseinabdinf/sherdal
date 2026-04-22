@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sherdal/ske"
 	"strings"
+
+	"github.com/hosseinabdinf/sherdal/ske"
 
 	"github.com/tuneinsight/lattigo/v6/utils/sampling"
 )

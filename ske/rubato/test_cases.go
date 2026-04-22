@@ -1,7 +1,7 @@
 package rubato
 
 import (
-	"sherdal/ske"
+	"github.com/hosseinabdinf/sherdal/ske"
 )
 
 type TestCase int
