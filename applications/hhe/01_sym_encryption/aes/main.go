@@ -7,7 +7,7 @@ import (
 	symAes "github.com/hosseinabdinf/sherdal/ske/aes"
 
 	// "fmt"
-	bootstrapping2 "github.com/hosseinabdinf/sherdal/internal/aes_bootstrapping"
+	bootstrapping2 "github.com/hosseinabdinf/sherdal/pkg/aes_bootstrapping"
 
 	// "github.com/hosseinabdinf/sherdal/utils" // Removed unused import
 

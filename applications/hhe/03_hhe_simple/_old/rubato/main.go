@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/hosseinabdinf/sherdal/internal/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
 
 	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 
@@ -94,7 +94,7 @@ func main() {
 	// Decrypt and decode the Rubato keystream
 	for i := 0; i < blocksize-4; i++ {
 		val := fvEncoder.DecodeUintSmallNew(fvDecryptor.DecryptNew(keystreamCt[i]))
-		resString := fmt.Sprintf("keystream[%d]: internal(%d), plain(%d)", i, val[0], keystream[0][i])
+		resString := fmt.Sprintf("keystream[%d]: pkg(%d), plain(%d)", i, val[0], keystream[0][i])
 		fmt.Println(resString)
 	}
 }

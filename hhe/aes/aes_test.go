@@ -7,7 +7,7 @@ import (
 	"math"
 	"testing"
 
-	aesbootstrapper "github.com/hosseinabdinf/sherdal/internal/aes_bootstrapping"
+	aesbootstrapper "github.com/hosseinabdinf/sherdal/pkg/aes_bootstrapping"
 
 	"github.com/tuneinsight/lattigo/v6/circuits/ckks/dft"
 	"github.com/tuneinsight/lattigo/v6/circuits/ckks/mod1"

@@ -8,7 +8,7 @@ import (
 
 	hera2 "github.com/hosseinabdinf/sherdal/ske/hera"
 
-	"github.com/hosseinabdinf/sherdal/internal/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
 	"github.com/hosseinabdinf/sherdal/utils"
 )
 

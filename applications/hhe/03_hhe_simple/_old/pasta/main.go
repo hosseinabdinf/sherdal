@@ -20,7 +20,7 @@ func main() {
 
 	// select the parameter set, both must be from the same set
 	symParams := hhe.HHEPasta3P1614.SymParams
-	homParams := hhe.HHEPasta3P1614.HomParams
+	homParams := hhe.HHEPasta3P1614.HeParams
 
 	// generate a vector of 100 random numbers
 	vectorSize := 100

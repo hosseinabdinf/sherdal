@@ -3,7 +3,7 @@ package rubato
 import (
 	"testing"
 
-	"github.com/hosseinabdinf/sherdal/internal"
+	"github.com/hosseinabdinf/sherdal/pkg"
 
 	"github.com/hosseinabdinf/sherdal/ske/rubato"
 
@@ -17,7 +17,7 @@ func TestRubatoMatchesPlaintext(t *testing.T) {
 	key := []uint64{1, 3, 5, 7, 9, 11, 13, 15, 2, 4, 6, 8, 10, 12, 14, 16}
 	require.NoError(t, heRubato.EncryptSymmetricKey(key))
 
-	nonces := internal.DeterministicNonces(6, 8)
+	nonces := pkg.DeterministicNonces(6, 8)
 	counter := []byte{0, 1, 2, 3, 4, 5, 6, 7}
 	ciphertexts, err := heRubato.EvalKeystream(nonces, counter)
 	require.NoError(t, err)

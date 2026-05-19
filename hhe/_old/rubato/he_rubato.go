@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"math"
 
-	ckks_fv2 "github.com/hosseinabdinf/sherdal/internal/old_fv"
+	ckks_fv2 "github.com/hosseinabdinf/sherdal/pkg/old_fv"
 
 	"github.com/hosseinabdinf/sherdal/ske/rubato"
 	"github.com/hosseinabdinf/sherdal/utils"

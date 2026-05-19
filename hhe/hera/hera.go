@@ -3,7 +3,7 @@ package hera
 import (
 	"fmt"
 
-	"github.com/hosseinabdinf/sherdal/internal"
+	"github.com/hosseinabdinf/sherdal/pkg"
 
 	"github.com/hosseinabdinf/sherdal/ske"
 	symhera "github.com/hosseinabdinf/sherdal/ske/hera"
@@ -13,27 +13,27 @@ import (
 
 type Hera struct {
 	config   Config
-	rt       *internal.BGVRuntime
-	fv       *internal.FVHeraEvaluator
+	rt       *pkg.BGVRuntime
+	fv       *pkg.FVHeraEvaluator
 	key      []*rlwe.Ciphertext
 	clearKey []uint64
 }
 
 func NewHera(cfg Config) (*Hera, error) {
 	var (
-		rt  *internal.BGVRuntime
+		rt  *pkg.BGVRuntime
 		err error
 	)
 	if cfg.UseResidualBGV {
-		rt, err = internal.NewAlignedBGVRuntime(cfg.HalfBootSpec())
+		rt, err = pkg.NewAlignedBGVRuntime(cfg.HalfBootSpec())
 	} else {
-		rt, err = internal.NewDefaultBGVRuntime(cfg.BGVLogN, cfg.SymmetricParams.Modulus)
+		rt, err = pkg.NewDefaultBGVRuntime(cfg.BGVLogN, cfg.SymmetricParams.Modulus)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	fv, err := internal.NewFVHeraEvaluator(rt, cfg.SymmetricParams)
+	fv, err := pkg.NewFVHeraEvaluator(rt, cfg.SymmetricParams)
 	if err != nil {
 		return nil, err
 	}
@@ -69,39 +69,39 @@ func (h *Hera) DecryptTransciphered(ciphertexts []*rlwe.Ciphertext, plainSize in
 	if err != nil {
 		return nil, err
 	}
-	return internal.FlattenDecryptedBlocks(outputs, blockWidth, plainSize), nil
+	return pkg.FlattenDecryptedBlocks(outputs, blockWidth, plainSize), nil
 }
 
 func (h *Hera) Decrypt(ciphertexts []*rlwe.Ciphertext, plainSize int) ([]uint64, error) {
 	return h.DecryptTransciphered(ciphertexts, plainSize)
 }
 
-func (h *Hera) Runtime() *internal.BGVRuntime {
+func (h *Hera) Runtime() *pkg.BGVRuntime {
 	return h.rt
 }
 
-func (h *Hera) HalfBootSpec() internal.LegacyHalfBootParameters {
+func (h *Hera) HalfBootSpec() pkg.LegacyHalfBootParameters {
 	return h.config.HalfBootSpec()
 }
 
-func (h *Hera) ModDownPlan() internal.ModDownPlan {
+func (h *Hera) ModDownPlan() pkg.ModDownPlan {
 	return h.config.modDownPlan()
 }
 
-func (h *Hera) NewHalfBootstrapper() (*internal.HalfBootstrapper, error) {
+func (h *Hera) NewHalfBootstrapper() (*pkg.HalfBootstrapper, error) {
 	spec := h.HalfBootSpec()
 	if h.config.UseResidualBGV {
-		return internal.NewHalfBootstrapperWithKeys(spec, h.rt.SecretKey(), h.rt.PublicKey())
+		return pkg.NewHalfBootstrapperWithKeys(spec, h.rt.SecretKey(), h.rt.PublicKey())
 	}
-	return internal.NewHalfBootstrapper(spec)
+	return pkg.NewHalfBootstrapper(spec)
 }
 
-func (h *Hera) NewBridge() (*internal.RtFBridge, error) {
-	return internal.NewRtFBridge(h.rt, h.HalfBootSpec())
+func (h *Hera) NewBridge() (*pkg.RtFBridge, error) {
+	return pkg.NewRtFBridge(h.rt, h.HalfBootSpec())
 }
 
-func (h *Hera) NewSlotToCoeffTransformer() (*internal.SlotToCoeffTransformer, error) {
-	return internal.NewSlotToCoeffTransformer(h.rt, h.config.logFVSlots(), h.ModDownPlan().StCModDown)
+func (h *Hera) NewSlotToCoeffTransformer() (*pkg.SlotToCoeffTransformer, error) {
+	return pkg.NewSlotToCoeffTransformer(h.rt, h.config.logFVSlots(), h.ModDownPlan().StCModDown)
 }
 
 func (h *Hera) EvalKeystreamCoeffs(nonces [][]byte) ([]*rlwe.Ciphertext, error) {
@@ -116,7 +116,7 @@ func (h *Hera) EvalKeystreamCoeffs(nonces [][]byte) ([]*rlwe.Ciphertext, error) 
 	return transformer.TransformAll(cts)
 }
 
-func (h *Hera) Transcipher(values []float64, nonces [][]byte) (*internal.TranscipherResult, error) {
+func (h *Hera) Transcipher(values []float64, nonces [][]byte) (*pkg.TranscipherResult, error) {
 	if !h.config.UseResidualBGV {
 		return nil, fmt.Errorf("Transcipher requires UseResidualBGV=true")
 	}
@@ -148,8 +148,8 @@ func (h *Hera) Transcipher(values []float64, nonces [][]byte) (*internal.Transci
 		return nil, err
 	}
 
-	packedValues := internal.PackDataToCoefficients(values, h.HalfBootSpec().LogN, len(values))
-	packedKeystream := internal.PackKeystreamComponent(h.plainKeystreamComponent(nonces), h.HalfBootSpec().LogN)
+	packedValues := pkg.PackDataToCoefficients(values, h.HalfBootSpec().LogN, len(values))
+	packedKeystream := pkg.PackKeystreamComponent(h.plainKeystreamComponent(nonces), h.HalfBootSpec().LogN)
 	clientPlaintext, err := bridge.BuildClientPlaintext(packedValues, packedKeystream)
 	if err != nil {
 		return nil, err
@@ -164,7 +164,7 @@ func (h *Hera) Transcipher(values []float64, nonces [][]byte) (*internal.Transci
 		return nil, err
 	}
 
-	return &internal.TranscipherResult{
+	return &pkg.TranscipherResult{
 		Keystream:        keystream,
 		KeystreamCoeffs:  keystreamCoeffs,
 		ClientPlaintext:  clientPlaintext,
@@ -190,11 +190,11 @@ func (h *Hera) TranscipherSymCiphertext(ciphertext []uint64, nonce []byte) ([]*r
 	}
 	blockWidth := h.config.SymmetricParams.BlockSize
 	numBlocks := ske.CeilDiv(len(ciphertext), blockWidth)
-	nonces := internal.ExpandNonceBlocks(nonce, numBlocks)
-	packed := internal.PackCiphertextBlocks(ciphertext, blockWidth, h.rt.Slots())
+	nonces := pkg.ExpandNonceBlocks(nonce, numBlocks)
+	packed := pkg.PackCiphertextBlocks(ciphertext, blockWidth, h.rt.Slots())
 	keystream, err := h.fv.Crypt(nonces, h.key)
 	if err != nil {
 		return nil, err
 	}
-	return internal.SubtractPackedPlain(h.rt, keystream, packed)
+	return pkg.SubtractPackedPlain(h.rt, keystream, packed)
 }

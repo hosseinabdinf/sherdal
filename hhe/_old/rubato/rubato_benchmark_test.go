@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hosseinabdinf/sherdal/internal/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
 
 	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 )

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -250,7 +251,7 @@ func ReSizeImage(imageName string, scale int) string {
 	var img image.Image
 	prefix := applications.FindRootPath()
 	path := filepath.Join(prefix, configs.DatasetDir, configs.DogsDir, imageName)
-
+	fmt.Println("Image Path:", path)
 	img, err = imgio.Open(path)
 	HandleError(err)
 

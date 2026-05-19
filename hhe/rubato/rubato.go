@@ -3,7 +3,7 @@ package rubato
 import (
 	"fmt"
 
-	"github.com/hosseinabdinf/sherdal/internal"
+	"github.com/hosseinabdinf/sherdal/pkg"
 
 	"github.com/hosseinabdinf/sherdal/ske"
 	symrubato "github.com/hosseinabdinf/sherdal/ske/rubato"
@@ -13,27 +13,27 @@ import (
 
 type Rubato struct {
 	config   Config
-	rt       *internal.BGVRuntime
-	fv       *internal.FVRubatoEvaluator
+	rt       *pkg.BGVRuntime
+	fv       *pkg.FVRubatoEvaluator
 	key      []*rlwe.Ciphertext
 	clearKey []uint64
 }
 
 func NewRubato(cfg Config) (*Rubato, error) {
 	var (
-		rt  *internal.BGVRuntime
+		rt  *pkg.BGVRuntime
 		err error
 	)
 	if cfg.UseResidualBGV {
-		rt, err = internal.NewAlignedBGVRuntime(cfg.halfBootSpec())
+		rt, err = pkg.NewAlignedBGVRuntime(cfg.halfBootSpec())
 	} else {
-		rt, err = internal.NewDefaultBGVRuntime(cfg.BGVLogN, cfg.SymmetricParams.Modulus)
+		rt, err = pkg.NewDefaultBGVRuntime(cfg.BGVLogN, cfg.SymmetricParams.Modulus)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	fv, err := internal.NewFVRubatoEvaluator(rt, cfg.SymmetricParams)
+	fv, err := pkg.NewFVRubatoEvaluator(rt, cfg.SymmetricParams)
 	if err != nil {
 		return nil, err
 	}
@@ -69,39 +69,39 @@ func (r *Rubato) DecryptTransciphered(ciphertexts []*rlwe.Ciphertext, plainSize 
 	if err != nil {
 		return nil, err
 	}
-	return internal.FlattenDecryptedBlocks(outputs, blockWidth, plainSize), nil
+	return pkg.FlattenDecryptedBlocks(outputs, blockWidth, plainSize), nil
 }
 
 func (r *Rubato) Decrypt(ciphertexts []*rlwe.Ciphertext, plainSize int) ([]uint64, error) {
 	return r.DecryptTransciphered(ciphertexts, plainSize)
 }
 
-func (r *Rubato) Runtime() *internal.BGVRuntime {
+func (r *Rubato) Runtime() *pkg.BGVRuntime {
 	return r.rt
 }
 
-func (r *Rubato) HalfBootSpec() internal.LegacyHalfBootParameters {
+func (r *Rubato) HalfBootSpec() pkg.LegacyHalfBootParameters {
 	return r.config.halfBootSpec()
 }
 
-func (r *Rubato) ModDownPlan() internal.ModDownPlan {
+func (r *Rubato) ModDownPlan() pkg.ModDownPlan {
 	return r.config.modDownPlan()
 }
 
-func (r *Rubato) NewHalfBootstrapper() (*internal.HalfBootstrapper, error) {
+func (r *Rubato) NewHalfBootstrapper() (*pkg.HalfBootstrapper, error) {
 	spec := r.HalfBootSpec()
 	if r.config.UseResidualBGV {
-		return internal.NewHalfBootstrapperWithKeys(spec, r.rt.SecretKey(), r.rt.PublicKey())
+		return pkg.NewHalfBootstrapperWithKeys(spec, r.rt.SecretKey(), r.rt.PublicKey())
 	}
-	return internal.NewHalfBootstrapper(spec)
+	return pkg.NewHalfBootstrapper(spec)
 }
 
-func (r *Rubato) NewBridge() (*internal.RtFBridge, error) {
-	return internal.NewRtFBridge(r.rt, r.HalfBootSpec())
+func (r *Rubato) NewBridge() (*pkg.RtFBridge, error) {
+	return pkg.NewRtFBridge(r.rt, r.HalfBootSpec())
 }
 
-func (r *Rubato) NewSlotToCoeffTransformer() (*internal.SlotToCoeffTransformer, error) {
-	return internal.NewSlotToCoeffTransformer(r.rt, r.rt.LogMaxSlots(), r.ModDownPlan().StCModDown)
+func (r *Rubato) NewSlotToCoeffTransformer() (*pkg.SlotToCoeffTransformer, error) {
+	return pkg.NewSlotToCoeffTransformer(r.rt, r.rt.LogMaxSlots(), r.ModDownPlan().StCModDown)
 }
 
 func (r *Rubato) EvalKeystreamCoeffs(nonces [][]byte, counter []byte) ([]*rlwe.Ciphertext, error) {
@@ -116,7 +116,7 @@ func (r *Rubato) EvalKeystreamCoeffs(nonces [][]byte, counter []byte) ([]*rlwe.C
 	return transformer.TransformAll(cts)
 }
 
-func (r *Rubato) Transcipher(values []float64, nonces [][]byte, counter []byte) (*internal.TranscipherResult, error) {
+func (r *Rubato) Transcipher(values []float64, nonces [][]byte, counter []byte) (*pkg.TranscipherResult, error) {
 	if !r.config.UseResidualBGV {
 		return nil, fmt.Errorf("Transcipher requires UseResidualBGV=true")
 	}
@@ -148,8 +148,8 @@ func (r *Rubato) Transcipher(values []float64, nonces [][]byte, counter []byte) 
 		return nil, err
 	}
 
-	packedValues := internal.PackDataToCoefficients(values, r.HalfBootSpec().LogN, len(values))
-	packedKeystream := internal.PackKeystreamComponent(r.plainKeystreamComponent(nonces, counter), r.HalfBootSpec().LogN)
+	packedValues := pkg.PackDataToCoefficients(values, r.HalfBootSpec().LogN, len(values))
+	packedKeystream := pkg.PackKeystreamComponent(r.plainKeystreamComponent(nonces, counter), r.HalfBootSpec().LogN)
 	clientPlaintext, err := bridge.BuildClientPlaintext(packedValues, packedKeystream)
 	if err != nil {
 		return nil, err
@@ -164,7 +164,7 @@ func (r *Rubato) Transcipher(values []float64, nonces [][]byte, counter []byte) 
 		return nil, err
 	}
 
-	return &internal.TranscipherResult{
+	return &pkg.TranscipherResult{
 		Keystream:        keystream,
 		KeystreamCoeffs:  keystreamCoeffs,
 		ClientPlaintext:  clientPlaintext,
@@ -190,12 +190,12 @@ func (r *Rubato) TranscipherSymCiphertext(ciphertext []uint64, nonce []byte) ([]
 	}
 	blockWidth := r.config.SymmetricParams.BlockSize - 4
 	numBlocks := ske.CeilDiv(len(ciphertext), blockWidth)
-	nonces := internal.ExpandNonceBlocks(nonce, numBlocks)
-	counters := internal.ExpandRubatoCounters(numBlocks)
-	packed := internal.PackCiphertextBlocks(ciphertext, blockWidth, r.rt.Slots())
+	nonces := pkg.ExpandNonceBlocks(nonce, numBlocks)
+	counters := pkg.ExpandRubatoCounters(numBlocks)
+	packed := pkg.PackCiphertextBlocks(ciphertext, blockWidth, r.rt.Slots())
 	keystream, err := r.fv.CryptWithCounters(nonces, counters, r.key)
 	if err != nil {
 		return nil, err
 	}
-	return internal.SubtractPackedPlain(r.rt, keystream, packed)
+	return pkg.SubtractPackedPlain(r.rt, keystream, packed)
 }

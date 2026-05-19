@@ -3,7 +3,7 @@ package hera
 import (
 	"testing"
 
-	"github.com/hosseinabdinf/sherdal/internal"
+	"github.com/hosseinabdinf/sherdal/pkg"
 
 	symhera "github.com/hosseinabdinf/sherdal/ske/hera"
 
@@ -17,7 +17,7 @@ func TestHeraEvalKeystreamSmoke(t *testing.T) {
 	key := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
 	require.NoError(t, heHera.EncryptSymmetricKey(key))
 
-	nonces := internal.DeterministicNonces(1, 64)
+	nonces := pkg.DeterministicNonces(1, 64)
 	ciphertexts, err := heHera.EvalKeystream(nonces)
 	require.NoError(t, err)
 
