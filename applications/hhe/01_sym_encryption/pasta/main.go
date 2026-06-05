@@ -1,5 +1,5 @@
 // This is a sample application for encryption a vector of random numbers using
-// hybrid homomorphic encryption scheme: PASTA
+// a hybrid homomorphic encryption scheme: PASTA
 package main
 
 import (

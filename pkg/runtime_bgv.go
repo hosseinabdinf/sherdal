@@ -109,6 +109,10 @@ func (rt *BGVRuntime) EvaluationKeys() *rlwe.MemEvaluationKeySet {
 	return rt.evk
 }
 
+func (rt *BGVRuntime) Evaluator() *bgv.Evaluator {
+	return rt.evaluator
+}
+
 func (rt *BGVRuntime) DecryptUint(ciphertext *rlwe.Ciphertext) ([]uint64, error) {
 	values := make([]uint64, rt.Slots())
 	if err := rt.encoder.Decode(rt.decryptor.DecryptNew(ciphertext), values); err != nil {

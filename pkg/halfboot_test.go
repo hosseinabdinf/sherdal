@@ -1,4 +1,4 @@
-package pkg
+package pkg_test
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/hosseinabdinf/sherdal/hhe/hera"
 
+	"github.com/hosseinabdinf/sherdal/pkg"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func TestHalfBootstrapRuntimeBuilds(t *testing.T) {
 		t.Skip("enable with go test -v when validating the aes_bootstrapping runtime")
 	}
 
-	hb, err := NewHalfBootstrapper(hera.DefaultHeraConfig(hera.Hera128AF, symhera.Hera4Params2516).HalfBootSpec())
+	hb, err := pkg.NewHalfBootstrapper(hera.DefaultHeraConfig(hera.Hera128AF, symhera.Hera4Params2516).HalfBootSpec())
 	require.NoError(t, err)
 	require.NotNil(t, hb.Runtime().Bootstrapper)
 }

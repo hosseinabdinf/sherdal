@@ -3,19 +3,19 @@ package hera
 import (
 	"fmt"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org/ring"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org"
 
 	"golang.org/x/crypto/sha3"
 )
 
 type MFVHera interface {
-	Crypt(nonce [][]byte, kCt []*old_fv.Ciphertext, heraModDown []int) []*old_fv.Ciphertext
-	CryptNoModSwitch(nonce [][]byte, kCt []*old_fv.Ciphertext) []*old_fv.Ciphertext
-	CryptAutoModSwitch(nonce [][]byte, kCt []*old_fv.Ciphertext, noiseEstimator old_fv.MFVNoiseEstimator) (res []*old_fv.Ciphertext, heraModDown []int)
+	Crypt(nonce [][]byte, kCt []*_old_fv_org.Ciphertext, heraModDown []int) []*_old_fv_org.Ciphertext
+	CryptNoModSwitch(nonce [][]byte, kCt []*_old_fv_org.Ciphertext) []*_old_fv_org.Ciphertext
+	CryptAutoModSwitch(nonce [][]byte, kCt []*_old_fv_org.Ciphertext, noiseEstimator _old_fv_org.MFVNoiseEstimator) (res []*_old_fv_org.Ciphertext, heraModDown []int)
 	Reset(nbInitModDown int)
-	EncKey(key []uint64) (res []*old_fv.Ciphertext)
+	EncKey(key []uint64) (res []*_old_fv_org.Ciphertext)
 }
 
 type mfvHera struct {
@@ -23,20 +23,20 @@ type mfvHera struct {
 	slots         int
 	nbInitModDown int
 
-	params    *old_fv.Parameters
-	encoder   old_fv.MFVEncoder
-	encryptor old_fv.MFVEncryptor
-	evaluator old_fv.MFVEvaluator
+	params    *_old_fv_org.Parameters
+	encoder   _old_fv_org.MFVEncoder
+	encryptor _old_fv_org.MFVEncryptor
+	evaluator _old_fv_org.MFVEvaluator
 
-	stCt []*old_fv.Ciphertext
-	mkCt []*old_fv.Ciphertext
-	rkCt []*old_fv.Ciphertext   // Buffer for round key
-	rc   [][][]uint64           // RoundConstants[round][state][slot]
-	rcPt []*old_fv.PlaintextMul // Buffer for round constants
+	stCt []*_old_fv_org.Ciphertext
+	mkCt []*_old_fv_org.Ciphertext
+	rkCt []*_old_fv_org.Ciphertext   // Buffer for round key
+	rc   [][][]uint64                // RoundConstants[round][state][slot]
+	rcPt []*_old_fv_org.PlaintextMul // Buffer for round constants
 	xof  []sha3.ShakeHash
 }
 
-func NewMFVHera(numRound int, params *old_fv.Parameters, encoder old_fv.MFVEncoder, encryptor old_fv.MFVEncryptor, evaluator old_fv.MFVEvaluator, nbInitModDown int) MFVHera {
+func NewMFVHera(numRound int, params *_old_fv_org.Parameters, encoder _old_fv_org.MFVEncoder, encryptor _old_fv_org.MFVEncryptor, evaluator _old_fv_org.MFVEvaluator, nbInitModDown int) MFVHera {
 	hera := new(mfvHera)
 
 	hera.numRound = numRound
@@ -48,10 +48,10 @@ func NewMFVHera(numRound int, params *old_fv.Parameters, encoder old_fv.MFVEncod
 	hera.encryptor = encryptor
 	hera.evaluator = evaluator
 
-	hera.stCt = make([]*old_fv.Ciphertext, 16)
-	hera.mkCt = make([]*old_fv.Ciphertext, 16)
-	hera.rkCt = make([]*old_fv.Ciphertext, 16)
-	hera.rcPt = make([]*old_fv.PlaintextMul, 16)
+	hera.stCt = make([]*_old_fv_org.Ciphertext, 16)
+	hera.mkCt = make([]*_old_fv_org.Ciphertext, 16)
+	hera.rkCt = make([]*_old_fv_org.Ciphertext, 16)
+	hera.rcPt = make([]*_old_fv_org.PlaintextMul, 16)
 	hera.xof = make([]sha3.ShakeHash, hera.slots)
 
 	hera.rc = make([][][]uint64, hera.numRound+1)
@@ -69,7 +69,7 @@ func NewMFVHera(numRound int, params *old_fv.Parameters, encoder old_fv.MFVEncod
 		for j := 0; j < hera.slots; j++ {
 			state[j] = uint64(i + 1) // ic = 1, ..., 16
 		}
-		icPT := old_fv.NewPlaintextFV(params)
+		icPT := _old_fv_org.NewPlaintextFV(params)
 		encoder.EncodeUintSmall(state, icPT)
 		encryptor.EncryptNew(icPT)
 		hera.stCt[i] = encryptor.EncryptNew(icPT)
@@ -89,7 +89,7 @@ func (hera *mfvHera) Reset(nbInitModDown int) {
 		for j := 0; j < hera.slots; j++ {
 			state[j] = uint64(i + 1) // ic = 1, ..., 16
 		}
-		icPT := old_fv.NewPlaintextFV(hera.params)
+		icPT := _old_fv_org.NewPlaintextFV(hera.params)
 		hera.encoder.EncodeUintSmall(state, icPT)
 		hera.encryptor.EncryptNew(icPT)
 		hera.stCt[i] = hera.encryptor.EncryptNew(icPT)
@@ -110,7 +110,7 @@ func (hera *mfvHera) init(nonce [][]byte) {
 	for r := 0; r <= hera.numRound; r++ {
 		for st := 0; st < 16; st++ {
 			for slot := 0; slot < slots; slot++ {
-				hera.rc[r][st][slot] = old_fv.SampleZqx(hera.xof[slot], hera.params.PlainModulus())
+				hera.rc[r][st][slot] = _old_fv_org.SampleZqx(hera.xof[slot], hera.params.PlainModulus())
 			}
 		}
 	}
@@ -123,7 +123,7 @@ func (hera *mfvHera) init(nonce [][]byte) {
 	}
 }
 
-func (hera *mfvHera) findBudgetInfo(noiseEstimator old_fv.MFVNoiseEstimator) (maxInvBudget, minErrorBits int) {
+func (hera *mfvHera) findBudgetInfo(noiseEstimator _old_fv_org.MFVNoiseEstimator) (maxInvBudget, minErrorBits int) {
 	plainModulus := ring.NewUint(hera.params.PlainModulus())
 	maxInvBudget = 0
 	minErrorBits = 0
@@ -139,7 +139,7 @@ func (hera *mfvHera) findBudgetInfo(noiseEstimator old_fv.MFVNoiseEstimator) (ma
 	return
 }
 
-func (hera *mfvHera) modSwitchAuto(round int, noiseEstimator old_fv.MFVNoiseEstimator, heraModDown []int) {
+func (hera *mfvHera) modSwitchAuto(round int, noiseEstimator _old_fv_org.MFVNoiseEstimator, heraModDown []int) {
 	lvl := hera.stCt[0].Level()
 
 	QiLvl := hera.params.Qi()[:lvl+1]
@@ -194,7 +194,7 @@ func (hera *mfvHera) modSwitch(nbSwitch int) {
 }
 
 // CryptNoModSwitch Compute ciphertexts without modulus switching
-func (hera *mfvHera) CryptNoModSwitch(nonce [][]byte, kCt []*old_fv.Ciphertext) []*old_fv.Ciphertext {
+func (hera *mfvHera) CryptNoModSwitch(nonce [][]byte, kCt []*_old_fv_org.Ciphertext) []*_old_fv_org.Ciphertext {
 	for st := 0; st < 16; st++ {
 		hera.mkCt[st] = kCt[st].CopyNew().Ciphertext()
 	}
@@ -214,7 +214,7 @@ func (hera *mfvHera) CryptNoModSwitch(nonce [][]byte, kCt []*old_fv.Ciphertext) 
 }
 
 // CryptAutoModSwitch Compute ciphertexts with automatic modulus switching
-func (hera *mfvHera) CryptAutoModSwitch(nonce [][]byte, kCt []*old_fv.Ciphertext, noiseEstimator old_fv.MFVNoiseEstimator) ([]*old_fv.Ciphertext, []int) {
+func (hera *mfvHera) CryptAutoModSwitch(nonce [][]byte, kCt []*_old_fv_org.Ciphertext, noiseEstimator _old_fv_org.MFVNoiseEstimator) ([]*_old_fv_org.Ciphertext, []int) {
 	heraModDown := make([]int, hera.numRound+1)
 	heraModDown[0] = hera.nbInitModDown
 	for st := 0; st < 16; st++ {
@@ -238,7 +238,7 @@ func (hera *mfvHera) CryptAutoModSwitch(nonce [][]byte, kCt []*old_fv.Ciphertext
 }
 
 // Crypt Compute ciphertexts with modulus switching as given in heraModDown
-func (hera *mfvHera) Crypt(nonce [][]byte, kCt []*old_fv.Ciphertext, heraModDown []int) []*old_fv.Ciphertext {
+func (hera *mfvHera) Crypt(nonce [][]byte, kCt []*_old_fv_org.Ciphertext, heraModDown []int) []*_old_fv_org.Ciphertext {
 	if heraModDown[0] != hera.nbInitModDown {
 		errorString := fmt.Sprintf("nbInitModDown expected %d but %d given", hera.nbInitModDown, heraModDown[0])
 		panic(errorString)
@@ -268,7 +268,7 @@ func (hera *mfvHera) addRoundKey(round int, reduce bool) {
 	ev := hera.evaluator
 
 	for st := 0; st < 16; st++ {
-		hera.rcPt[st] = old_fv.NewPlaintextMulLvl(hera.params, hera.stCt[st].Level())
+		hera.rcPt[st] = _old_fv_org.NewPlaintextMulLvl(hera.params, hera.stCt[st].Level())
 		hera.encoder.EncodeUintMulSmall(hera.rc[round][st], hera.rcPt[st])
 	}
 
@@ -353,9 +353,9 @@ func (hera *mfvHera) cube() {
 	}
 }
 
-func (hera *mfvHera) EncKey(key []uint64) (res []*old_fv.Ciphertext) {
+func (hera *mfvHera) EncKey(key []uint64) (res []*_old_fv_org.Ciphertext) {
 	slots := hera.slots
-	res = make([]*old_fv.Ciphertext, 16)
+	res = make([]*_old_fv_org.Ciphertext, 16)
 
 	for i := 0; i < 16; i++ {
 		dupKey := make([]uint64, slots)
@@ -363,7 +363,7 @@ func (hera *mfvHera) EncKey(key []uint64) (res []*old_fv.Ciphertext) {
 			dupKey[j] = key[i]
 		}
 
-		keyPt := old_fv.NewPlaintextFV(hera.params)
+		keyPt := _old_fv_org.NewPlaintextFV(hera.params)
 		hera.encoder.EncodeUintSmall(dupKey, keyPt)
 		res[i] = hera.encryptor.EncryptNew(keyPt)
 		if hera.nbInitModDown > 0 {

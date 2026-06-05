@@ -1,11 +1,14 @@
-package pkg
+package pkg_test
 
 import (
 	"testing"
 
+	"github.com/hosseinabdinf/sherdal/hhe/pasta"
 	rubato2 "github.com/hosseinabdinf/sherdal/hhe/rubato"
+	"github.com/hosseinabdinf/sherdal/pkg"
 
 	"github.com/hosseinabdinf/sherdal/ske/hera"
+	sympasta "github.com/hosseinabdinf/sherdal/ske/pasta"
 
 	hera2 "github.com/hosseinabdinf/sherdal/hhe/hera"
 
@@ -50,6 +53,31 @@ func TestHeraTranscipherSymCiphertext(t *testing.T) {
 	require.NoError(t, err)
 
 	newPlain, err := heHera.Decrypt(heCipher, len(plaintext))
+	require.NoError(t, err)
+	require.Equal(t, []uint64(plaintext), newPlain)
+}
+
+func TestPastaTranscipherSymCiphertext(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping pasta transcipher test in short mode")
+	}
+	hePasta, err := pasta.NewPastaWithConfig(
+		pasta.Config{Preset: pasta.Pasta4_1614, BGVLogN: 14, SymmetricParams: sympasta.Pasta4Param1614},
+		pkg.ParallelConfig{MaxWorkers: 4},
+	)
+	require.NoError(t, err)
+
+	key := []uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	require.NoError(t, hePasta.EncryptSymmetricKey(key))
+
+	plaintext := ske.Plaintext{1, 2, 3, 4, 5, 6, 7, 8}
+	nonce := []byte{10, 11, 12, 13, 14, 15, 16, 17}
+	symCipher := sympasta.NewPasta(key, sympasta.Pasta4Param1614).NewEncryptor().EncryptWithNonce(plaintext, nonce)
+
+	heCipher, err := hePasta.TranscipherSymCiphertext(symCipher, nonce)
+	require.NoError(t, err)
+
+	newPlain, err := hePasta.Decrypt(heCipher, len(plaintext))
 	require.NoError(t, err)
 	require.Equal(t, []uint64(plaintext), newPlain)
 }

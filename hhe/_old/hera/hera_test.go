@@ -8,7 +8,7 @@ import (
 
 	hera2 "github.com/hosseinabdinf/sherdal/ske/hera"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org"
 	"github.com/hosseinabdinf/sherdal/utils"
 )
 
@@ -113,7 +113,7 @@ func testHEHera(t *testing.T, tc hera2.TestContext) {
 	heHera.ScaleCiphertext(fvKeyStreams)
 	lg.PrintMemUsage("ScaleCiphertext")
 
-	var ctBoot *old_fv.Ciphertext
+	var ctBoot *_old_fv_org.Ciphertext
 	ctBoot = heHera.HalfBoot()
 	lg.PrintMemUsage("HalfBoot")
 
@@ -127,7 +127,7 @@ func testHEHera(t *testing.T, tc hera2.TestContext) {
 		heHera.ckksDecryptor, heHera.ckksEncoder)
 }
 
-func printDebug(params *old_fv.Parameters, ciphertext *old_fv.Ciphertext, valuesWant []complex128, decryptor old_fv.CKKSDecryptor, encoder old_fv.CKKSEncoder) {
+func printDebug(params *_old_fv_org.Parameters, ciphertext *_old_fv_org.Ciphertext, valuesWant []complex128, decryptor _old_fv_org.CKKSDecryptor, encoder _old_fv_org.CKKSEncoder) {
 	valuesTest := encoder.DecodeComplex(decryptor.DecryptNew(ciphertext), params.LogSlots())
 	logSlots := params.LogSlots()
 	sigma := params.Sigma()
@@ -135,6 +135,6 @@ func printDebug(params *old_fv.Parameters, ciphertext *old_fv.Ciphertext, values
 	fmt.Printf("Scale: 2^%f\n", math.Log2(ciphertext.Scale()))
 	fmt.Printf("ValuesTest: %6.10f %6.10f %6.10f %6.10f...\n", valuesTest[0], valuesTest[1], valuesTest[2], valuesTest[3])
 	fmt.Printf("ValuesWant: %6.10f %6.10f %6.10f %6.10f...\n", valuesWant[0], valuesWant[1], valuesWant[2], valuesWant[3])
-	precisionState := old_fv.GetPrecisionStats(params, encoder, nil, valuesWant, valuesTest, logSlots, sigma)
+	precisionState := _old_fv_org.GetPrecisionStats(params, encoder, nil, valuesWant, valuesTest, logSlots, sigma)
 	fmt.Println(precisionState.String())
 }

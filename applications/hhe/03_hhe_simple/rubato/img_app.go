@@ -2,17 +2,19 @@ package rubato
 
 import (
 	"image"
+	"sync"
 
 	"github.com/hosseinabdinf/sherdal/hhe/rubato"
 
 	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 	"github.com/hosseinabdinf/sherdal/utils"
+	"github.com/tuneinsight/lattigo/v6/core/rlwe"
 )
 
 func HHEImgEncApp(imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	logger := utils.NewLogger(utils.DEBUG)
 
-	symParams := rubato2.Rubato2Param2516
+	symParams := rubato2.Rubato3Param2516
 
 	cfg := rubato.Config{
 		Preset:          rubato.Rubato128S,
@@ -20,14 +22,28 @@ func HHEImgEncApp(imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 		SymmetricParams: symParams,
 	}
 
-	fv_rubato, err := rubato.NewRubato(cfg)
+	fvRubatoRed, err := rubato.NewRubato(cfg)
+	if err != nil {
+		panic(err)
+	}
+	fvRubatoGrn, err := rubato.NewRubato(cfg)
+	if err != nil {
+		panic(err)
+	}
+	fvRubatoBlu, err := rubato.NewRubato(cfg)
 	if err != nil {
 		panic(err)
 	}
 
 	key := rubato2.GenerateSymKey(symParams)
 
-	if err := fv_rubato.EncryptSymmetricKey(key); err != nil {
+	if err := fvRubatoRed.EncryptSymmetricKey(key); err != nil {
+		panic(err)
+	}
+	if err := fvRubatoGrn.EncryptSymmetricKey(key); err != nil {
+		panic(err)
+	}
+	if err := fvRubatoBlu.EncryptSymmetricKey(key); err != nil {
 		panic(err)
 	}
 
@@ -39,43 +55,88 @@ func HHEImgEncApp(imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 	rows := 1
 	cols := len(img.R)
 
-	// encrypt image data using symmetric cipher
-	redCipher := symCipher.EncryptWithNonce(img.R, nonce)
-	grnCipher := symCipher.EncryptWithNonce(img.G, nonce)
-	bluCipher := symCipher.EncryptWithNonce(img.B, nonce)
+	// encrypt image data using symmetric cipher in parallel (each channel's internal blocks are also parallel)
+	var (
+		redCipher, grnCipher, bluCipher []uint64
+		encWg                           sync.WaitGroup
+	)
+	encWg.Add(3)
+	go func() {
+		defer encWg.Done()
+		redCipher = symCipher.EncryptWithNonce(img.R, nonce)
+	}()
+	go func() {
+		defer encWg.Done()
+		grnCipher = symCipher.EncryptWithNonce(img.G, nonce)
+	}()
+	go func() {
+		defer encWg.Done()
+		bluCipher = symCipher.EncryptWithNonce(img.B, nonce)
+	}()
+	encWg.Wait()
 	logger.PrintMemUsage("RubatoEncryption")
 
-	heCipherRed, err := fv_rubato.TranscipherSymCiphertext(redCipher, nonce)
-	if err != nil {
-		panic(err)
-	}
-	logger.PrintMemUsage("TranscipherSymCiphertextRed")
+	// Transcipher channels concurrently using their own Rubato instances to prevent evaluator data races
+	var (
+		heCipherRed, heCipherGrn, heCipherBlu []*rlwe.Ciphertext
+		errRed, errGrn, errBlu                error
+		transWg                               sync.WaitGroup
+	)
+	transWg.Add(3)
+	go func() {
+		defer transWg.Done()
+		heCipherRed, errRed = fvRubatoRed.TranscipherSymCiphertext(redCipher, nonce)
+	}()
+	go func() {
+		defer transWg.Done()
+		heCipherGrn, errGrn = fvRubatoGrn.TranscipherSymCiphertext(grnCipher, nonce)
+	}()
+	go func() {
+		defer transWg.Done()
+		heCipherBlu, errBlu = fvRubatoBlu.TranscipherSymCiphertext(bluCipher, nonce)
+	}()
+	transWg.Wait()
 
-	heCipherGrn, err := fv_rubato.TranscipherSymCiphertext(grnCipher, nonce)
-	if err != nil {
-		panic(err)
+	if errRed != nil {
+		panic(errRed)
 	}
-	logger.PrintMemUsage("TranscipherSymCiphertextGrn")
-
-	heCipherBlu, err := fv_rubato.TranscipherSymCiphertext(bluCipher, nonce)
-	if err != nil {
-		panic(err)
+	if errGrn != nil {
+		panic(errGrn)
 	}
-	logger.PrintMemUsage("TranscipherSymCiphertextBlu")
-
-	decryptedRed, err := fv_rubato.Decrypt(heCipherRed, len(img.R))
-	if err != nil {
-		panic(err)
+	if errBlu != nil {
+		panic(errBlu)
 	}
+	logger.PrintMemUsage("TranscipherSymCiphertextAllChannels")
 
-	decryptedGrn, err := fv_rubato.Decrypt(heCipherGrn, len(img.G))
-	if err != nil {
-		panic(err)
+	// Decrypt channels concurrently using their own Rubato instances
+	var (
+		decryptedRed, decryptedGrn, decryptedBlu []uint64
+		decErrRed, decErrGrn, decErrBlu          error
+		decWg                                    sync.WaitGroup
+	)
+	decWg.Add(3)
+	go func() {
+		defer decWg.Done()
+		decryptedRed, decErrRed = fvRubatoRed.Decrypt(heCipherRed, len(img.R))
+	}()
+	go func() {
+		defer decWg.Done()
+		decryptedGrn, decErrGrn = fvRubatoGrn.Decrypt(heCipherGrn, len(img.G))
+	}()
+	go func() {
+		defer decWg.Done()
+		decryptedBlu, decErrBlu = fvRubatoBlu.Decrypt(heCipherBlu, len(img.B))
+	}()
+	decWg.Wait()
+
+	if decErrRed != nil {
+		panic(decErrRed)
 	}
-
-	decryptedBlu, err := fv_rubato.Decrypt(heCipherBlu, len(img.B))
-	if err != nil {
-		panic(err)
+	if decErrGrn != nil {
+		panic(decErrGrn)
+	}
+	if decErrBlu != nil {
+		panic(decErrBlu)
 	}
 	logger.PrintMemUsage("RubatoDecryption")
 
@@ -94,5 +155,4 @@ func HHEImgEncApp(imgBounds image.Rectangle, img utils.ImageUint64Vec) {
 
 	precision, lost := symCipher.GetPrecisionAndLoss(img.R, decryptedVec.R)
 	logger.PrintFormatted("Precision= %f, Lost= %f", precision, lost)
-
 }

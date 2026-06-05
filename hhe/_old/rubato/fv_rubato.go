@@ -3,9 +3,9 @@ package rubato
 import (
 	"fmt"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv/ring"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org/ring"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org"
 
 	"golang.org/x/crypto/sha3"
 )
@@ -72,11 +72,11 @@ var RubatoParams = []RubatoParam{
 }
 
 type MFVRubato interface {
-	Crypt(nonce [][]byte, counter []byte, kCt []*old_fv.Ciphertext, rubatoModDown []int) []*old_fv.Ciphertext
-	CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []*old_fv.Ciphertext) []*old_fv.Ciphertext
-	CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt []*old_fv.Ciphertext, noiseEstimator old_fv.MFVNoiseEstimator) (res []*old_fv.Ciphertext, rubatoModDown []int)
+	Crypt(nonce [][]byte, counter []byte, kCt []*_old_fv_org.Ciphertext, rubatoModDown []int) []*_old_fv_org.Ciphertext
+	CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []*_old_fv_org.Ciphertext) []*_old_fv_org.Ciphertext
+	CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt []*_old_fv_org.Ciphertext, noiseEstimator _old_fv_org.MFVNoiseEstimator) (res []*_old_fv_org.Ciphertext, rubatoModDown []int)
 	Reset(nbInitModDown int)
-	EncKey(key []uint64) (res []*old_fv.Ciphertext)
+	EncKey(key []uint64) (res []*_old_fv_org.Ciphertext)
 }
 
 type mfvRubato struct {
@@ -86,20 +86,20 @@ type mfvRubato struct {
 	slots         int
 	nbInitModDown int
 
-	params    *old_fv.Parameters
-	encoder   old_fv.MFVEncoder
-	encryptor old_fv.MFVEncryptor
-	evaluator old_fv.MFVEvaluator
+	params    *_old_fv_org.Parameters
+	encoder   _old_fv_org.MFVEncoder
+	encryptor _old_fv_org.MFVEncryptor
+	evaluator _old_fv_org.MFVEvaluator
 
-	stCt []*old_fv.Ciphertext
-	mkCt []*old_fv.Ciphertext
-	rkCt []*old_fv.Ciphertext   // Buffer for round key
-	rc   [][][]uint64           // RoundConstants[round][state][slot]
-	rcPt []*old_fv.PlaintextMul // Buffer for round constants
+	stCt []*_old_fv_org.Ciphertext
+	mkCt []*_old_fv_org.Ciphertext
+	rkCt []*_old_fv_org.Ciphertext   // Buffer for round key
+	rc   [][][]uint64                // RoundConstants[round][state][slot]
+	rcPt []*_old_fv_org.PlaintextMul // Buffer for round constants
 	xof  []sha3.ShakeHash
 }
 
-func NewMFVRubato(rubatoParam int, params *old_fv.Parameters, encoder old_fv.MFVEncoder, encryptor old_fv.MFVEncryptor, evaluator old_fv.MFVEvaluator, nbInitModDown int) MFVRubato {
+func NewMFVRubato(rubatoParam int, params *_old_fv_org.Parameters, encoder _old_fv_org.MFVEncoder, encryptor _old_fv_org.MFVEncryptor, evaluator _old_fv_org.MFVEvaluator, nbInitModDown int) MFVRubato {
 	rubato := new(mfvRubato)
 
 	rubato.rubatoParam = rubatoParam
@@ -113,10 +113,10 @@ func NewMFVRubato(rubatoParam int, params *old_fv.Parameters, encoder old_fv.MFV
 	rubato.encryptor = encryptor
 	rubato.evaluator = evaluator
 
-	rubato.stCt = make([]*old_fv.Ciphertext, rubato.blocksize)
-	rubato.mkCt = make([]*old_fv.Ciphertext, rubato.blocksize)
-	rubato.rkCt = make([]*old_fv.Ciphertext, rubato.blocksize)
-	rubato.rcPt = make([]*old_fv.PlaintextMul, rubato.blocksize)
+	rubato.stCt = make([]*_old_fv_org.Ciphertext, rubato.blocksize)
+	rubato.mkCt = make([]*_old_fv_org.Ciphertext, rubato.blocksize)
+	rubato.rkCt = make([]*_old_fv_org.Ciphertext, rubato.blocksize)
+	rubato.rcPt = make([]*_old_fv_org.PlaintextMul, rubato.blocksize)
 	rubato.xof = make([]sha3.ShakeHash, rubato.slots)
 
 	rubato.rc = make([][][]uint64, rubato.numRound+1)
@@ -134,7 +134,7 @@ func NewMFVRubato(rubatoParam int, params *old_fv.Parameters, encoder old_fv.MFV
 		for j := 0; j < rubato.slots; j++ {
 			state[j] = uint64(i + 1) // ic = 1, ..., blocksize
 		}
-		icPT := old_fv.NewPlaintextFV(params)
+		icPT := _old_fv_org.NewPlaintextFV(params)
 		encoder.EncodeUintSmall(state, icPT)
 		encryptor.EncryptNew(icPT)
 		rubato.stCt[i] = encryptor.EncryptNew(icPT)
@@ -154,7 +154,7 @@ func (rubato *mfvRubato) Reset(nbInitModDown int) {
 		for j := 0; j < rubato.slots; j++ {
 			state[j] = uint64(i + 1) // ic = 1, ..., blocksize
 		}
-		icPT := old_fv.NewPlaintextFV(rubato.params)
+		icPT := _old_fv_org.NewPlaintextFV(rubato.params)
 		rubato.encoder.EncodeUintSmall(state, icPT)
 		rubato.encryptor.EncryptNew(icPT)
 		rubato.stCt[i] = rubato.encryptor.EncryptNew(icPT)
@@ -176,7 +176,7 @@ func (rubato *mfvRubato) init(nonce [][]byte, counter []byte) {
 	for r := 0; r <= rubato.numRound; r++ {
 		for i := 0; i < rubato.blocksize; i++ {
 			for slot := 0; slot < slots; slot++ {
-				rubato.rc[r][i][slot] = old_fv.SampleZqx(rubato.xof[slot], rubato.params.PlainModulus())
+				rubato.rc[r][i][slot] = _old_fv_org.SampleZqx(rubato.xof[slot], rubato.params.PlainModulus())
 			}
 		}
 	}
@@ -189,7 +189,7 @@ func (rubato *mfvRubato) init(nonce [][]byte, counter []byte) {
 	}
 }
 
-func (rubato *mfvRubato) findBudgetInfo(noiseEstimator old_fv.MFVNoiseEstimator) (maxInvBudget, minErrorBits int) {
+func (rubato *mfvRubato) findBudgetInfo(noiseEstimator _old_fv_org.MFVNoiseEstimator) (maxInvBudget, minErrorBits int) {
 	plainModulus := ring.NewUint(rubato.params.PlainModulus())
 	maxInvBudget = 0
 	minErrorBits = 0
@@ -205,7 +205,7 @@ func (rubato *mfvRubato) findBudgetInfo(noiseEstimator old_fv.MFVNoiseEstimator)
 	return
 }
 
-func (rubato *mfvRubato) modSwitchAuto(round int, noiseEstimator old_fv.MFVNoiseEstimator, rubatoModDown []int) {
+func (rubato *mfvRubato) modSwitchAuto(round int, noiseEstimator _old_fv_org.MFVNoiseEstimator, rubatoModDown []int) {
 	lvl := rubato.stCt[0].Level()
 
 	QiLvl := rubato.params.Qi()[:lvl+1]
@@ -260,7 +260,7 @@ func (rubato *mfvRubato) modSwitch(nbSwitch int) {
 }
 
 // CryptNoModSwitch Compute ciphertexts without modulus switching
-func (rubato *mfvRubato) CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []*old_fv.Ciphertext) []*old_fv.Ciphertext {
+func (rubato *mfvRubato) CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []*_old_fv_org.Ciphertext) []*_old_fv_org.Ciphertext {
 	for i := 0; i < rubato.blocksize; i++ {
 		rubato.mkCt[i] = kCt[i].CopyNew().Ciphertext()
 	}
@@ -280,7 +280,7 @@ func (rubato *mfvRubato) CryptNoModSwitch(nonce [][]byte, counter []byte, kCt []
 }
 
 // CryptAutoModSwitch Compute ciphertexts with automatic modulus switching
-func (rubato *mfvRubato) CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt []*old_fv.Ciphertext, noiseEstimator old_fv.MFVNoiseEstimator) ([]*old_fv.Ciphertext, []int) {
+func (rubato *mfvRubato) CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt []*_old_fv_org.Ciphertext, noiseEstimator _old_fv_org.MFVNoiseEstimator) ([]*_old_fv_org.Ciphertext, []int) {
 	rubatoModDown := make([]int, rubato.numRound+1)
 	rubatoModDown[0] = rubato.nbInitModDown
 	for i := 0; i < rubato.blocksize; i++ {
@@ -305,7 +305,7 @@ func (rubato *mfvRubato) CryptAutoModSwitch(nonce [][]byte, counter []byte, kCt 
 
 // Crypt compute ciphertexts with modulus switching as given in rubatoModDown
 // using the homomorphically encrypted secret key `kCt`, `nonce`, `counter`
-func (rubato *mfvRubato) Crypt(nonce [][]byte, counter []byte, kCt []*old_fv.Ciphertext, rubatoModDown []int) []*old_fv.Ciphertext {
+func (rubato *mfvRubato) Crypt(nonce [][]byte, counter []byte, kCt []*_old_fv_org.Ciphertext, rubatoModDown []int) []*_old_fv_org.Ciphertext {
 	if rubatoModDown[0] != rubato.nbInitModDown {
 		errorString := fmt.Sprintf("nbInitModDown expected %d but %d given", rubato.nbInitModDown, rubatoModDown[0])
 		panic(errorString)
@@ -335,7 +335,7 @@ func (rubato *mfvRubato) addRoundKey(round int, reduce bool) {
 	ev := rubato.evaluator
 
 	for i := 0; i < rubato.blocksize; i++ {
-		rubato.rcPt[i] = old_fv.NewPlaintextMulLvl(rubato.params, rubato.stCt[i].Level())
+		rubato.rcPt[i] = _old_fv_org.NewPlaintextMulLvl(rubato.params, rubato.stCt[i].Level())
 		rubato.encoder.EncodeUintMulSmall(rubato.rc[round][i], rubato.rcPt[i])
 	}
 
@@ -356,7 +356,7 @@ func (rubato *mfvRubato) finAddRoundKey(outputSize int) {
 	ev := rubato.evaluator
 
 	for i := 0; i < outputSize; i++ {
-		rubato.rcPt[i] = old_fv.NewPlaintextMulLvl(rubato.params, rubato.stCt[i].Level())
+		rubato.rcPt[i] = _old_fv_org.NewPlaintextMulLvl(rubato.params, rubato.stCt[i].Level())
 		rubato.encoder.EncodeUintMulSmall(rubato.rc[rubato.numRound][i], rubato.rcPt[i])
 	}
 
@@ -371,7 +371,7 @@ func (rubato *mfvRubato) finAddRoundKey(outputSize int) {
 
 func (rubato *mfvRubato) linearLayer() {
 	ev := rubato.evaluator
-	buf := make([]*old_fv.Ciphertext, rubato.blocksize)
+	buf := make([]*_old_fv_org.Ciphertext, rubato.blocksize)
 
 	if rubato.blocksize == 16 {
 		// MixColumns
@@ -525,7 +525,7 @@ func (rubato *mfvRubato) linearLayer() {
 
 func (rubato *mfvRubato) finLinLayer() {
 	ev := rubato.evaluator
-	buf := make([]*old_fv.Ciphertext, rubato.blocksize)
+	buf := make([]*_old_fv_org.Ciphertext, rubato.blocksize)
 
 	if rubato.blocksize == 16 {
 		// MixColumns
@@ -744,9 +744,9 @@ func (rubato *mfvRubato) feistel() {
 	}
 }
 
-func (rubato *mfvRubato) EncKey(key []uint64) (res []*old_fv.Ciphertext) {
+func (rubato *mfvRubato) EncKey(key []uint64) (res []*_old_fv_org.Ciphertext) {
 	slots := rubato.slots
-	res = make([]*old_fv.Ciphertext, rubato.blocksize)
+	res = make([]*_old_fv_org.Ciphertext, rubato.blocksize)
 
 	for i := 0; i < rubato.blocksize; i++ {
 		dupKey := make([]uint64, slots)
@@ -754,7 +754,7 @@ func (rubato *mfvRubato) EncKey(key []uint64) (res []*old_fv.Ciphertext) {
 			dupKey[j] = key[i]
 		}
 
-		keyPt := old_fv.NewPlaintextFV(rubato.params)
+		keyPt := _old_fv_org.NewPlaintextFV(rubato.params)
 		rubato.encoder.EncodeUintSmall(dupKey, keyPt)
 		res[i] = rubato.encryptor.EncryptNew(keyPt)
 		if rubato.nbInitModDown > 0 {

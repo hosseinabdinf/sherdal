@@ -59,6 +59,11 @@ func (b *RtFBridge) InputScale() float64 {
 	return roundedScale(float64(b.q0) / float64(b.plainModulus) * b.messageScaling)
 }
 
+// ResidualN returns the ring degree N of the residual CKKS parameters.
+func (b *RtFBridge) ResidualN() int {
+	return b.residual.N()
+}
+
 func (b *RtFBridge) EncodeCoefficientsRingT(values []float64) ([]uint64, error) {
 	if len(values) > b.residual.N() {
 		return nil, fmt.Errorf("too many coefficients: got %d, max %d", len(values), b.residual.N())

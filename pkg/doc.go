@@ -2,5 +2,5 @@
 // to Lattigo v6.
 //
 // This package intentionally focuses on the modular HE evaluation of HERA and
-// Rubato. It does not reimplement the legacy old_fv half-bootstrap bridge.
+// Rubato. It does not reimplement the legacy _old_fv_org half-bootstrap bridge.
 package pkg

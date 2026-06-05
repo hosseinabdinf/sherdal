@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"math/big"
+	"math/bits"
 
 	sym "github.com/hosseinabdinf/sherdal/ske"
 	"github.com/hosseinabdinf/sherdal/utils"
@@ -56,7 +56,6 @@ func GenerateSymKey(params Parameter) (key sym.Key) {
 	key = make(sym.Key, params.KeySize)
 
 	for i := 0; i < params.KeySize; i++ {
-		//key[i] = sampling.RandUint64() % params.PlainModulus
 		key[i] = utils.SampleZq(rand.Reader, params.Modulus)
 	}
 
@@ -125,42 +124,41 @@ func (pas *pasta) round(r int) {
 	}
 }
 
+// mulMod calculates (a * b) % m.
+// Safe and overflow-free for any modulus m < 2^64.
+func mulMod(a, b, m uint64) uint64 {
+	hi, lo := bits.Mul64(a, b)
+	_, rem := bits.Div64(hi, lo, m)
+	return rem
+}
+
+func addMod(a, b, m uint64) uint64 {
+	res := a + b
+	if res >= m {
+		res -= m
+	}
+	return res
+}
+
 // sBoxCube state[i] := (state[i] ^ 3)
 func (pas *pasta) sBoxCube(state *sym.Block) {
-	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
 	for i := 0; i < pas.params.GetBlockSize(); i++ {
-		// square = state ^ 2 (mod p)
-		curState := new(big.Int).SetUint64((*state)[i])
-		square := new(big.Int).Mul(curState, curState)
-		square.Mod(square, modulus)
-
-		// cube = square * state (mod p)
-		cube := square.Mul(square, curState)
-		cube.Mod(cube, modulus)
-
-		(*state)[i] = cube.Uint64()
+		val := (*state)[i]
+		square := mulMod(val, val, pas.p)
+		(*state)[i] = mulMod(square, val, pas.p)
 	}
 }
 
 // sBoxFeistel state[i] := {i = 0; state[i];state[i] + (state[i-1] ^ 2)}
 func (pas *pasta) sBoxFeistel(state *sym.Block) {
 	ps := pas.params.GetBlockSize()
-	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
-
 	nState := make(sym.Block, ps)
 	nState[0] = (*state)[0]
 
 	for i := 1; i < ps; i++ {
-		// square = state[i-1] ^ 2 (mod p)
-		prevState := new(big.Int).SetUint64((*state)[i-1])
-		square := new(big.Int).Mul(prevState, prevState)
-		square.Mod(square, modulus)
-		curState := new(big.Int).SetUint64((*state)[i])
-		//square = square + state[i] (mod p)
-		square.Add(square, curState)
-		square.Mod(square, modulus)
-		// new state = square
-		nState[i] = square.Uint64()
+		prevState := (*state)[i-1]
+		square := mulMod(prevState, prevState, pas.p)
+		nState[i] = addMod(square, (*state)[i], pas.p)
 	}
 
 	*state = nState
@@ -182,17 +180,14 @@ func (pas *pasta) linearLayer() {
 // requires storage of two row in the matrix
 func (pas *pasta) matmul(state *sym.Block) {
 	ps := pas.params.GetBlockSize()
-	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
 	newState := make(sym.Block, ps)
 	randVC := pas.getRandomVector(false)
 	var currentRow = randVC
 
 	for i := 0; i < ps; i++ {
 		for j := 0; j < ps; j++ {
-			matMulVal := new(big.Int).Mul(big.NewInt(int64(currentRow[j])), big.NewInt(int64((*state)[j])))
-			matMulVal.Mod(matMulVal, modulus)
-
-			newState[i] = (newState[i] + matMulVal.Uint64()) % pas.params.Modulus
+			matMulVal := mulMod(currentRow[j], (*state)[j], pas.p)
+			newState[i] = addMod(newState[i], matMulVal, pas.p)
 		}
 		if i != (ps - 1) {
 			currentRow = pas.calculateRow(currentRow, randVC)
@@ -205,52 +200,22 @@ func (pas *pasta) matmul(state *sym.Block) {
 // addRC add state with a random field element
 func (pas *pasta) addRC(state *sym.Block) {
 	ps := pas.params.GetBlockSize()
-	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
-
 	for i := 0; i < ps; i++ {
-		randElement := new(big.Int).SetUint64(pas.generateRandomFieldElement(true))
-		curState := new(big.Int).SetUint64((*state)[i])
-
-		curState.Add(curState, randElement)
-		curState.Mod(curState, modulus)
-
-		(*state)[i] = curState.Uint64()
+		randElement := pas.generateRandomFieldElement(true)
+		(*state)[i] = addMod((*state)[i], randElement, pas.p)
 	}
 }
-
-/*
-	(2	1) (state1)
-	(1	2) (state2)
-*/
 
 // mix add the state1 and state2
 func (pas *pasta) mix() {
 	ps := pas.params.GetBlockSize()
-	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
-
-	// allocate memory for the two state
-	st1 := new(big.Int)
-	st2 := new(big.Int)
-
-	// adding states
 	for i := 0; i < ps; i++ {
-		st1.SetUint64(pas.state1[i])
-		st2.SetUint64(pas.state2[i])
+		st1 := pas.state1[i]
+		st2 := pas.state2[i]
 
-		// (state1[i] + state2[i]) % pas.p
-		sum := new(big.Int).Add(st1, st2)
-		sum.Mod(sum, modulus)
-
-		//state1[i] = (state1[i] + sum) % pas.p
-		sSt1 := new(big.Int).Add(sum, st1)
-		sSt1.Mod(sSt1, modulus)
-
-		//state2[i] = (state2[i] + sum) % pas.p
-		sSt2 := new(big.Int).Add(sum, st2)
-		sSt2.Mod(sSt2, modulus)
-
-		pas.state1[i] = sSt1.Uint64()
-		pas.state2[i] = sSt2.Uint64()
+		sum := addMod(st1, st2, pas.p)
+		pas.state1[i] = addMod(sum, st1, pas.p)
+		pas.state2[i] = addMod(sum, st2, pas.p)
 	}
 }
 
@@ -296,35 +261,18 @@ func (pas *pasta) getRandomVector(allowZero bool) sym.Block {
 	return rc
 }
 
-/*
-[	0	1	0	...	0	]
-[	0	0	1	...	0	]
-[	.	.	.	...	.	]
-[	.	.	.	...	.	]
-[	0	0	0	...	1	]
-[	r1	r2	r3	...	rt	]
-*/
-
 // calculateRow
 func (pas *pasta) calculateRow(previousRow, firstRow sym.Block) sym.Block {
 	ps := pas.params.GetBlockSize()
-	modulus := new(big.Int).SetUint64(pas.params.GetModulus())
 	output := make(sym.Block, ps)
-	// =======================================
-	pRow := new(big.Int).SetUint64(previousRow[ps-1])
+	pRow := previousRow[ps-1]
 
 	for j := 0; j < ps; j++ {
-		fRow := new(big.Int).SetUint64(firstRow[j])
-		temp := new(big.Int).Mul(fRow, pRow)
-		temp.Mod(temp, modulus)
-		// update the index row and add the value to the temp
+		temp := mulMod(firstRow[j], pRow, pas.p)
 		if j > 0 {
-			indexRow := new(big.Int).SetUint64(previousRow[j-1])
-			temp.Add(temp, indexRow)
-			temp.Mod(temp, modulus)
+			temp = addMod(temp, previousRow[j-1], pas.p)
 		}
-
-		output[j] = temp.Uint64()
+		output[j] = temp
 	}
 	return output
 }

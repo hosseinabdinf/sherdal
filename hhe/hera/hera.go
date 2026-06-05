@@ -165,6 +165,7 @@ func (h *Hera) Transcipher(values []float64, nonces [][]byte) (*pkg.TranscipherR
 	}
 
 	return &pkg.TranscipherResult{
+		Runtime:          h.rt,
 		Keystream:        keystream,
 		KeystreamCoeffs:  keystreamCoeffs,
 		ClientPlaintext:  clientPlaintext,

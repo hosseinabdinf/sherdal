@@ -17,20 +17,27 @@ type FVRubatoEvaluator struct {
 	params symrubato.Parameter
 	width  int
 	coeffs []uint64
+	cfg    ParallelConfig
 }
 
+// NewFVRubatoEvaluator creates a new FVRubatoEvaluator with serial execution.
 func NewFVRubatoEvaluator(runtime *BGVRuntime, params symrubato.Parameter) (*FVRubatoEvaluator, error) {
+	return NewFVRubatoEvaluatorWithConfig(runtime, params, SerialConfig())
+}
+
+// NewFVRubatoEvaluatorWithConfig creates a new FVRubatoEvaluator with the given parallel config.
+func NewFVRubatoEvaluatorWithConfig(runtime *BGVRuntime, params symrubato.Parameter, cfg ParallelConfig) (*FVRubatoEvaluator, error) {
 	width, coeffs, err := rubatoLayout(params.BlockSize)
 	if err != nil {
 		return nil, err
 	}
 
-	base, err := newBaseCipher(runtime, params.BlockSize, params.BlockSize-4)
+	base, err := newBaseCipher(runtime, params.BlockSize, params.BlockSize-4, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return &FVRubatoEvaluator{base: base, params: params, width: width, coeffs: coeffs}, nil
+	return &FVRubatoEvaluator{base: base, params: params, width: width, coeffs: coeffs, cfg: cfg}, nil
 }
 
 func (r *FVRubatoEvaluator) EncryptKey(key []uint64) ([]*rlwe.Ciphertext, error) {
@@ -48,18 +55,19 @@ func (r *FVRubatoEvaluator) Crypt(nonces [][]byte, counter []byte, encryptedKey 
 func (r *FVRubatoEvaluator) CryptWithCounters(nonces [][]byte, counters [][]byte, encryptedKey []*rlwe.Ciphertext) ([]*rlwe.Ciphertext, error) {
 	roundConstants := r.roundConstants(nonces, counters)
 	state := r.base.initialState()
+	eval := r.base.runtime.evaluator
 
 	if err := r.base.addRoundKey(state, encryptedKey, roundConstants[0]); err != nil {
 		return nil, err
 	}
 
 	for round := 1; round < r.params.Rounds; round++ {
-		mixed, err := applyCirculantLayer(r.base.runtime.evaluator, state, r.width, r.coeffs)
+		mixed, err := applyCirculantLayer(eval, state, r.width, r.coeffs, r.cfg)
 		if err != nil {
 			return nil, err
 		}
 
-		feistel, err := feistelState(r.base.runtime.evaluator, mixed)
+		feistel, err := feistelState(eval, mixed, r.cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -70,17 +78,17 @@ func (r *FVRubatoEvaluator) CryptWithCounters(nonces [][]byte, counters [][]byte
 		}
 	}
 
-	mixed, err := applyCirculantLayer(r.base.runtime.evaluator, state, r.width, r.coeffs)
+	mixed, err := applyCirculantLayer(eval, state, r.width, r.coeffs, r.cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	feistel, err := feistelState(r.base.runtime.evaluator, mixed)
+	feistel, err := feistelState(eval, mixed, r.cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	state, err = applyCirculantLayer(r.base.runtime.evaluator, feistel, r.width, r.coeffs)
+	state, err = applyCirculantLayer(eval, feistel, r.width, r.coeffs, r.cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -92,6 +100,9 @@ func (r *FVRubatoEvaluator) CryptWithCounters(nonces [][]byte, counters [][]byte
 	return append([]*rlwe.Ciphertext(nil), state[:r.base.outputSize]...), nil
 }
 
+// roundConstants generates the pseudorandom round constants for the Rubato evaluation rounds.
+// Each lane owns its own independent SHAKE256 stream and writes to disjoint positions
+// in the constants tensor (constants[round][state][lane]), so all lanes run in parallel.
 func (r *FVRubatoEvaluator) roundConstants(nonces [][]byte, counters [][]byte) [][][]uint64 {
 	rounds := r.params.Rounds + 1
 	constants := make([][][]uint64, rounds)
@@ -102,19 +113,20 @@ func (r *FVRubatoEvaluator) roundConstants(nonces [][]byte, counters [][]byte) [
 		}
 	}
 
-	for lane, nonce := range nonces {
+	// Parallelise over lanes: each goroutine writes only to constants[*][*][lane].
+	_ = parallelDo(len(nonces), r.cfg.MaxWorkers, r.cfg.Guard, func(lane int) error {
 		shake := sha3.NewShake256()
-		_, _ = shake.Write(nonce)
+		_, _ = shake.Write(nonces[lane])
 		if lane < len(counters) && counters[lane] != nil {
 			_, _ = shake.Write(counters[lane])
 		}
-
 		for round := 0; round < rounds; round++ {
 			for state := 0; state < r.base.blockSize; state++ {
 				constants[round][state][lane] = utils.RubSampleZqx(shake, r.params.Modulus)
 			}
 		}
-	}
+		return nil
+	})
 
 	return constants
 }

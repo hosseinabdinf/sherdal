@@ -165,6 +165,7 @@ func (r *Rubato) Transcipher(values []float64, nonces [][]byte, counter []byte) 
 	}
 
 	return &pkg.TranscipherResult{
+		Runtime:          r.rt,
 		Keystream:        keystream,
 		KeystreamCoeffs:  keystreamCoeffs,
 		ClientPlaintext:  clientPlaintext,

@@ -3,6 +3,7 @@ package rubato
 import (
 	"encoding/binary"
 	"math"
+	"sync"
 
 	sym "github.com/hosseinabdinf/sherdal/ske"
 )
@@ -26,7 +27,6 @@ func (enc *encryptor) Encrypt(plaintext sym.Plaintext) sym.Ciphertext {
 
 // EncryptWithNonce encrypts plaintext with a caller-provided nonce seed.
 func (enc *encryptor) EncryptWithNonce(plaintext sym.Plaintext, nonce []byte) sym.Ciphertext {
-	//logger := utils.NewLogger(utils.DEBUG)
 	size := len(plaintext)
 	if size == 0 {
 		return sym.Ciphertext{}
@@ -35,23 +35,29 @@ func (enc *encryptor) EncryptWithNonce(plaintext sym.Plaintext, nonce []byte) sy
 	modulus := enc.rub.params.GetModulus()
 	blockSize := enc.rub.params.GetBlockSize() - 4
 	numBlock := sym.CeilDiv(size, blockSize)
-	//logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	nonceSeed := sym.NonceSeed(nonce)
-	nonceBuf := make([]byte, sym.NonceSize)
-	counter := make([]byte, 8)
 
 	ciphertext := make(sym.Ciphertext, size)
 	copy(ciphertext, plaintext)
 
+	var wg sync.WaitGroup
 	for b := 0; b < numBlock; b++ {
-		sym.FillNonce(nonceBuf, nonceSeed, b)
-		binary.BigEndian.PutUint64(counter, uint64(b+1))
-		keyStream := enc.rub.KeyStream(nonceBuf, counter)
-		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
-			ciphertext[i] = (ciphertext[i] + keyStream[i-b*blockSize]) % modulus
-		}
+		wg.Add(1)
+		go func(b int) {
+			defer wg.Done()
+			nonceBuf := make([]byte, sym.NonceSize)
+			counter := make([]byte, 8)
+			sym.FillNonce(nonceBuf, nonceSeed, b)
+			binary.BigEndian.PutUint64(counter, uint64(b+1))
+			rubClone := enc.rub.runtime()
+			keyStream := rubClone.KeyStream(nonceBuf, counter)
+			for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
+				ciphertext[i] = (ciphertext[i] + keyStream[i-b*blockSize]) % modulus
+			}
+		}(b)
 	}
+	wg.Wait()
 
 	return ciphertext
 }
@@ -63,7 +69,6 @@ func (enc *encryptor) Decrypt(ciphertext sym.Ciphertext) sym.Plaintext {
 
 // DecryptWithNonce decrypts ciphertext with a caller-provided nonce seed.
 func (enc *encryptor) DecryptWithNonce(ciphertext sym.Ciphertext, nonce []byte) sym.Plaintext {
-	//logger := utils.NewLogger(utils.DEBUG)
 	size := len(ciphertext)
 	if size == 0 {
 		return sym.Plaintext{}
@@ -72,26 +77,34 @@ func (enc *encryptor) DecryptWithNonce(ciphertext sym.Ciphertext, nonce []byte) 
 	modulus := enc.rub.params.GetModulus()
 	blockSize := enc.rub.params.GetBlockSize() - 4
 	numBlock := sym.CeilDiv(size, blockSize)
-	//logger.PrintFormatted("Number of Block: %d", numBlock)
 
 	nonceSeed := sym.NonceSeed(nonce)
-	nonceBuf := make([]byte, sym.NonceSize)
-	counter := make([]byte, 8)
 
 	plaintext := make(sym.Plaintext, size)
 	copy(plaintext, ciphertext)
 
+	var wg sync.WaitGroup
 	for b := 0; b < numBlock; b++ {
-		sym.FillNonce(nonceBuf, nonceSeed, b)
-		binary.BigEndian.PutUint64(counter, uint64(b+1))
-		keyStream := enc.rub.KeyStream(nonceBuf, counter)
-		for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
-			if keyStream[i-b*blockSize] > plaintext[i] {
-				plaintext[i] += modulus
+		wg.Add(1)
+		go func(b int) {
+			defer wg.Done()
+			nonceBuf := make([]byte, sym.NonceSize)
+			counter := make([]byte, 8)
+			sym.FillNonce(nonceBuf, nonceSeed, b)
+			binary.BigEndian.PutUint64(counter, uint64(b+1))
+			rubClone := enc.rub.runtime()
+			keyStream := rubClone.KeyStream(nonceBuf, counter)
+			for i := b * blockSize; i < (b+1)*blockSize && i < size; i++ {
+				val := plaintext[i]
+				ks := keyStream[i-b*blockSize]
+				if ks > val {
+					val += modulus
+				}
+				plaintext[i] = val - ks
 			}
-			plaintext[i] = plaintext[i] - keyStream[i-b*blockSize]
-		}
+		}(b)
 	}
+	wg.Wait()
 
 	return plaintext
 }

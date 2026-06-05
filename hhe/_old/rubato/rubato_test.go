@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	ckksfv2 "github.com/hosseinabdinf/sherdal/pkg/old_fv"
+	ckksfv2 "github.com/hosseinabdinf/sherdal/pkg/_old_fv_org"
 
 	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 )

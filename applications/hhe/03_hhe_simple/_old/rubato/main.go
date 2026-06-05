@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org"
 
 	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 
@@ -11,27 +11,27 @@ import (
 )
 
 func main() {
-	var kgen old_fv.KeyGenerator
-	var fvEncoder old_fv.MFVEncoder
-	var sk *old_fv.SecretKey
-	var pk *old_fv.PublicKey
-	var fvEncryptor old_fv.MFVEncryptor
-	var fvDecryptor old_fv.MFVDecryptor
-	var fvEvaluator old_fv.MFVEvaluator
-	var fvNoiseEstimator old_fv.MFVNoiseEstimator
+	var kgen _old_fv_org.KeyGenerator
+	var fvEncoder _old_fv_org.MFVEncoder
+	var sk *_old_fv_org.SecretKey
+	var pk *_old_fv_org.PublicKey
+	var fvEncryptor _old_fv_org.MFVEncryptor
+	var fvDecryptor _old_fv_org.MFVDecryptor
+	var fvEvaluator _old_fv_org.MFVEvaluator
+	var fvNoiseEstimator _old_fv_org.MFVNoiseEstimator
 	var mfvRubato rubato.MFVRubato
 
 	var nonces [][]byte
 	var key []uint64
 	var keystream [][]uint64
-	var keystreamCt []*old_fv.Ciphertext
+	var keystreamCt []*_old_fv_org.Ciphertext
 
 	blocksize := rubato.RubatoParams[rubato.RUBATO128L].Blocksize
 	//numRound := rubato.RubatoParams[rubato.RUBATO128L].NumRound
 	plainModulus := rubato.RubatoParams[rubato.RUBATO128L].PlainModulus
 	//sigma := rubato.RubatoParams[rubato.RUBATO128L].Sigma
 
-	hbtpParams := old_fv.RtFRubatoParams[0]
+	hbtpParams := _old_fv_org.RtFRubatoParams[0]
 	params, err := hbtpParams.Params()
 	if err != nil {
 		panic(err)
@@ -42,17 +42,17 @@ func main() {
 
 	// Scheme context and keys
 	fmt.Println("Key generation...")
-	kgen = old_fv.NewKeyGenerator(params)
+	kgen = _old_fv_org.NewKeyGenerator(params)
 
 	sk, pk = kgen.GenKeyPairSparse(192)
 
-	fvEncoder = old_fv.NewMFVEncoder(params)
-	fvEncryptor = old_fv.NewMFVEncryptorFromPk(params, pk)
-	fvDecryptor = old_fv.NewMFVDecryptor(params, sk)
-	fvNoiseEstimator = old_fv.NewMFVNoiseEstimator(params, sk)
+	fvEncoder = _old_fv_org.NewMFVEncoder(params)
+	fvEncryptor = _old_fv_org.NewMFVEncryptorFromPk(params, pk)
+	fvDecryptor = _old_fv_org.NewMFVDecryptor(params, sk)
+	fvNoiseEstimator = _old_fv_org.NewMFVNoiseEstimator(params, sk)
 
 	rlk := kgen.GenRelinearizationKey(sk)
-	fvEvaluator = old_fv.NewMFVEvaluator(params, old_fv.EvaluationKey{Rlk: rlk}, nil)
+	fvEvaluator = _old_fv_org.NewMFVEvaluator(params, _old_fv_org.EvaluationKey{Rlk: rlk}, nil)
 
 	// Generating data set
 	key = make([]uint64, blocksize)

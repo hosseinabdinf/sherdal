@@ -8,7 +8,7 @@ import (
 )
 
 func TestApp(t *testing.T) {
-	var imageName = "dog_04.jpg"
+	var imageName = "dog_01.jpg"
 	// you can re-scale image to get the result faster
 	scaledImgName := utils.ReSizeImage(imageName, 5)
 	img, _ := utils.GetRGBImage(scaledImgName)

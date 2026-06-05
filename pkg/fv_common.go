@@ -7,11 +7,14 @@ import (
 	"github.com/tuneinsight/lattigo/v6/schemes/bgv"
 )
 
+// baseCipher holds the shared BGV runtime and pre-allocated state template used by
+// all FV cipher evaluators. cfg controls parallelism for all HE operations.
 type baseCipher struct {
 	runtime       *BGVRuntime
 	blockSize     int
 	outputSize    int
 	stateTemplate []*rlwe.Ciphertext
+	cfg           ParallelConfig
 }
 
 type weightedCiphertext struct {
@@ -19,7 +22,7 @@ type weightedCiphertext struct {
 	ct    *rlwe.Ciphertext
 }
 
-func newBaseCipher(runtime *BGVRuntime, blockSize, outputSize int) (*baseCipher, error) {
+func newBaseCipher(runtime *BGVRuntime, blockSize, outputSize int, cfg ParallelConfig) (*baseCipher, error) {
 	if blockSize <= 0 {
 		return nil, fmt.Errorf("invalid block size %d", blockSize)
 	}
@@ -41,6 +44,7 @@ func newBaseCipher(runtime *BGVRuntime, blockSize, outputSize int) (*baseCipher,
 		blockSize:     blockSize,
 		outputSize:    outputSize,
 		stateTemplate: stateTemplate,
+		cfg:           cfg,
 	}, nil
 }
 
@@ -65,6 +69,12 @@ func (b *baseCipher) initialState() []*rlwe.Ciphertext {
 	return cloneCiphertexts(b.stateTemplate)
 }
 
+// addRoundKey adds round key i to state[i] for every i in [0, blockSize).
+// The round constant is encoded as a plaintext, multiplied into a copy of
+// encryptedKey[i], and added into state[i].
+//
+// Encoding is done serially (bgv.Encoder is not goroutine-safe); the resulting
+// HE multiply+add is then parallelised using b.cfg.
 func (b *baseCipher) addRoundKey(state, encryptedKey []*rlwe.Ciphertext, roundConstants [][]uint64) error {
 	if len(state) != b.blockSize {
 		return fmt.Errorf("invalid state length %d, expected %d", len(state), b.blockSize)
@@ -76,22 +86,29 @@ func (b *baseCipher) addRoundKey(state, encryptedKey []*rlwe.Ciphertext, roundCo
 		return fmt.Errorf("invalid round constant length %d, expected %d", len(roundConstants), b.blockSize)
 	}
 
+	// Pre-encode all round-constant plaintexts serially (encoder is not goroutine-safe).
+	plaintexts := make([]*rlwe.Plaintext, b.blockSize)
 	for i := 0; i < b.blockSize; i++ {
-		plaintext, err := b.runtime.encodeUint(padUint(roundConstants[i], b.runtime.Slots()))
+		pt, err := b.runtime.encodeUint(padUint(roundConstants[i], b.runtime.Slots()))
 		if err != nil {
 			return err
 		}
-
-		roundKey := encryptedKey[i].CopyNew()
-		if err := b.runtime.evaluator.Mul(roundKey, plaintext, roundKey); err != nil {
-			return fmt.Errorf("multiply round key %d: %w", i, err)
-		}
-		if err := b.runtime.evaluator.Add(state[i], roundKey, state[i]); err != nil {
-			return fmt.Errorf("add round key %d: %w", i, err)
-		}
+		plaintexts[i] = pt
 	}
 
-	return nil
+	// Parallelise the HE multiply + add per state element.
+	// Each goroutine uses its own evaluator shallow-copy to avoid data races.
+	return parallelDo(b.blockSize, b.cfg.MaxWorkers, b.cfg.Guard, func(i int) error {
+		localEval := b.runtime.evaluator.ShallowCopy()
+		roundKey := encryptedKey[i].CopyNew()
+		if err := localEval.Mul(roundKey, plaintexts[i], roundKey); err != nil {
+			return fmt.Errorf("multiply round key %d: %w", i, err)
+		}
+		if err := localEval.Add(state[i], roundKey, state[i]); err != nil {
+			return fmt.Errorf("add round key %d: %w", i, err)
+		}
+		return nil
+	})
 }
 
 func cloneCiphertexts(ciphertexts []*rlwe.Ciphertext) []*rlwe.Ciphertext {
@@ -140,84 +157,106 @@ func multiplyByScalar(eval *bgv.Evaluator, ciphertext *rlwe.Ciphertext, scalar u
 	return result, nil
 }
 
-func applyCirculantColumns(eval *bgv.Evaluator, state []*rlwe.Ciphertext, width int, coeffs []uint64) ([]*rlwe.Ciphertext, error) {
+// applyCirculantColumns applies the circulant column layer.
+// Each output element result[row*width+col] is a linear combination of state elements
+// in the same column — all reads are from the immutable state slice. Parallelised over
+// rows using cfg; each row goroutine uses its own evaluator shallow-copy.
+func applyCirculantColumns(eval *bgv.Evaluator, state []*rlwe.Ciphertext, width int, coeffs []uint64, cfg ParallelConfig) ([]*rlwe.Ciphertext, error) {
 	result := make([]*rlwe.Ciphertext, len(state))
-	for row := 0; row < width; row++ {
+	err := parallelDo(width, cfg.MaxWorkers, cfg.Guard, func(row int) error {
+		localEval := eval.ShallowCopy()
 		for col := 0; col < width; col++ {
 			terms := make([]weightedCiphertext, width)
 			for k := 0; k < width; k++ {
 				terms[k] = weightedCiphertext{coeff: coeffs[k], ct: state[((row+k)%width)*width+col]}
 			}
-
-			combined, err := linearCombination(eval, terms)
+			combined, err := linearCombination(localEval, terms)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			result[row*width+col] = combined
 		}
-	}
-	return result, nil
+		return nil
+	})
+	return result, err
 }
 
-func applyCirculantRows(eval *bgv.Evaluator, state []*rlwe.Ciphertext, width int, coeffs []uint64) ([]*rlwe.Ciphertext, error) {
+// applyCirculantRows applies the circulant row layer.
+// Each output element result[row*width+col] is a linear combination of state elements
+// in the same row — all reads are from the immutable state slice. Parallelised over
+// rows using cfg; each row goroutine uses its own evaluator shallow-copy.
+func applyCirculantRows(eval *bgv.Evaluator, state []*rlwe.Ciphertext, width int, coeffs []uint64, cfg ParallelConfig) ([]*rlwe.Ciphertext, error) {
 	result := make([]*rlwe.Ciphertext, len(state))
-	for row := 0; row < width; row++ {
+	err := parallelDo(width, cfg.MaxWorkers, cfg.Guard, func(row int) error {
+		localEval := eval.ShallowCopy()
 		for col := 0; col < width; col++ {
 			terms := make([]weightedCiphertext, width)
 			for k := 0; k < width; k++ {
 				terms[k] = weightedCiphertext{coeff: coeffs[k], ct: state[row*width+((col+k)%width)]}
 			}
-
-			combined, err := linearCombination(eval, terms)
+			combined, err := linearCombination(localEval, terms)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			result[row*width+col] = combined
 		}
-	}
-	return result, nil
+		return nil
+	})
+	return result, err
 }
 
-func applyCirculantLayer(eval *bgv.Evaluator, state []*rlwe.Ciphertext, width int, coeffs []uint64) ([]*rlwe.Ciphertext, error) {
-	columns, err := applyCirculantColumns(eval, state, width, coeffs)
+// applyCirculantLayer applies columns then rows, both parallelised via cfg.
+func applyCirculantLayer(eval *bgv.Evaluator, state []*rlwe.Ciphertext, width int, coeffs []uint64, cfg ParallelConfig) ([]*rlwe.Ciphertext, error) {
+	columns, err := applyCirculantColumns(eval, state, width, coeffs, cfg)
 	if err != nil {
 		return nil, err
 	}
-	return applyCirculantRows(eval, columns, width, coeffs)
+	return applyCirculantRows(eval, columns, width, coeffs, cfg)
 }
 
-func cubeState(eval *bgv.Evaluator, state []*rlwe.Ciphertext) ([]*rlwe.Ciphertext, error) {
+// cubeState squares then cubes each ciphertext element independently.
+// Reads from the immutable state slice; writes to disjoint result slots.
+// Parallelised over state elements using cfg; each goroutine uses its own evaluator copy.
+func cubeState(eval *bgv.Evaluator, state []*rlwe.Ciphertext, cfg ParallelConfig) ([]*rlwe.Ciphertext, error) {
 	result := make([]*rlwe.Ciphertext, len(state))
-	for i, ciphertext := range state {
-		square, err := eval.MulRelinNew(ciphertext, ciphertext)
+	err := parallelDo(len(state), cfg.MaxWorkers, cfg.Guard, func(i int) error {
+		localEval := eval.ShallowCopy()
+		square, err := localEval.MulRelinNew(state[i], state[i])
 		if err != nil {
-			return nil, fmt.Errorf("square state %d: %w", i, err)
+			return fmt.Errorf("square state %d: %w", i, err)
 		}
-
-		cube, err := eval.MulRelinNew(square, ciphertext)
+		cube, err := localEval.MulRelinNew(square, state[i])
 		if err != nil {
-			return nil, fmt.Errorf("cube state %d: %w", i, err)
+			return fmt.Errorf("cube state %d: %w", i, err)
 		}
-
 		result[i] = cube
-	}
-	return result, nil
+		return nil
+	})
+	return result, err
 }
 
-func feistelState(eval *bgv.Evaluator, state []*rlwe.Ciphertext) ([]*rlwe.Ciphertext, error) {
+// feistelState applies the Feistel S-box: result[i] += state[i-1]^2 for i >= 1.
+// result[0] is an unchanged copy of state[0]. The source slice (state) is never
+// modified, so all indices i >= 1 are independent and parallelised via cfg.
+func feistelState(eval *bgv.Evaluator, state []*rlwe.Ciphertext, cfg ParallelConfig) ([]*rlwe.Ciphertext, error) {
 	result := cloneCiphertexts(state)
-	for i := 1; i < len(state); i++ {
-		square, err := eval.MulRelinNew(state[i-1], state[i-1])
-		if err != nil {
-			return nil, fmt.Errorf("square feistel state %d: %w", i-1, err)
-		}
-
-		if err := eval.Add(result[i], square, result[i]); err != nil {
-			return nil, fmt.Errorf("add feistel state %d: %w", i, err)
-		}
+	if len(state) <= 1 {
+		return result, nil
 	}
-
-	return result, nil
+	// Parallelise i = 1..len(state)-1.  j is 0-based to fit parallelDo's signature.
+	err := parallelDo(len(state)-1, cfg.MaxWorkers, cfg.Guard, func(j int) error {
+		i := j + 1 // actual state index
+		localEval := eval.ShallowCopy()
+		square, err := localEval.MulRelinNew(state[i-1], state[i-1])
+		if err != nil {
+			return fmt.Errorf("square feistel state %d: %w", i-1, err)
+		}
+		if err := localEval.Add(result[i], square, result[i]); err != nil {
+			return fmt.Errorf("add feistel state %d: %w", i, err)
+		}
+		return nil
+	})
+	return result, err
 }
 
 func repeatUint(value uint64, slots int) []uint64 {

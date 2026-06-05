@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hosseinabdinf/sherdal/pkg/old_fv"
+	"github.com/hosseinabdinf/sherdal/pkg/_old_fv_org"
 
 	rubato2 "github.com/hosseinabdinf/sherdal/ske/rubato"
 )
@@ -97,7 +97,7 @@ func benchHERubato(tc rubato2.TestContext, b *testing.B) {
 	})
 
 	// get BFV key stream using encrypted symmetric key, nonce, and counter on the server side
-	var fvKeyStreams []*old_fv.Ciphertext
+	var fvKeyStreams []*_old_fv_org.Ciphertext
 	b.Run("Rubato/FVKeyStream", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {

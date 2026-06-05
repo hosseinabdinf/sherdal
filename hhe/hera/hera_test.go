@@ -26,6 +26,7 @@ func TestHeraEvalKeystreamSmoke(t *testing.T) {
 	require.Len(t, ciphertexts, symhera.Hera4Params2516.BlockSize)
 	require.Len(t, got, len(nonces))
 	require.Len(t, got[0], symhera.Hera4Params2516.BlockSize)
+	println(got[0][0])
 }
 
 func TestHeraHalfBootSpecBuildsParameters(t *testing.T) {
